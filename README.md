@@ -71,14 +71,14 @@ Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I 
                             col_var.lerp_(col_mean, one_minus_beta2_t)
                             var_estimate = row_var @ col_var
                             max_row_var = row_var.max(dim=-2, keepdim=True)[0]
-                            var_estimate.div_(max_row_var.clamp_(min=eps1 + eps_rms))
+                            var_estimate.div_(max_row_var.clamp_(min=eps1))
         
                         else:
                             vi.mul_(group["gamma"]).add_(1 - group["gamma"], grad ** 2)
                             var_estimate = vi
                         
                         update = var_estimate.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
-                        update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1 + eps_rms))
+                        update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
                         denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
                         param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
         
@@ -86,11 +86,11 @@ Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I 
 
         optimizer = MaxFactor(
             model.parameters(), 
-            lr=0.025,  
+            lr=0.0025,  
             beta2_decay=-0.8,
             eps=(None, 1e-4),
             d=1.0,
-            weight_decay=0.0025,
+            weight_decay=0.00025,
             gamma=0.99, 
             eps_rms=1e-8,
             maximize=False,
