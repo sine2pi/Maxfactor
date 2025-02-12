@@ -83,22 +83,36 @@ Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I 
                         param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
         
                 return loss
+                
+#### example usage
 
-        optimizer = MaxFactor(
-            model.parameters(), 
-            lr=0.0025,  
-            beta2_decay=-0.8,
-            eps=(None, 1e-4),
-            d=1.0,
-            weight_decay=0.00025,
-            gamma=0.99, 
-            eps_rms=1e-8,
-            maximize=False,
-            )
+         optimizer = MaxFactor(
+             model.parameters(), 
+             lr=0.0025,  
+             beta2_decay=-0.8,
+             eps=(None, 1e-4),
+             d=1.0,
+             weight_decay=0.00025,
+             gamma=0.99, 
+             eps_rms=1e-8,
+             maximize=False,
+             )
         
-        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer=optimizer,
-            T_max=training_args.max_steps,
-            eta_min=0.0,
-            last_epoch=-1  
-        )
+         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+             optimizer=optimizer,
+             T_max=training_args.max_steps,
+             eta_min=0.0,
+             last_epoch=-1  
+         )
+
+         trainer = Seq2SeqTrainer(
+             args=training_args,
+             model=model,
+             train_dataset=dataset["train"],
+             eval_dataset=dataset["test"],
+             data_collator=data_collator,
+             compute_metrics=compute_metrics,
+             processing_class=feature_extractor,
+             optimizers=(optimizer, scheduler),
+             callbacks=[metrics_callback],
+         )
