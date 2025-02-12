@@ -1,6 +1,6 @@
 Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I found worked well for ASR models. Part Adafactor part RMSprop part Adamax part something else I can't remember where it came from.
 
-#### Maxfactor
+#### Maxfactor (not ready)
         
         class MaxFactor(Optimizer):
             def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, 
