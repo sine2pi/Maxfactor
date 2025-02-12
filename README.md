@@ -1,4 +1,4 @@
-Experimental optimizer - ASR/NLP
+Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I found worked well for ASR models. Part Adafactor part RMSprop part Adamax part something else I can't remember where it came from.
 
 #### Maxfactor
 
