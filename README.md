@@ -1,70 +1,75 @@
-Experimental optimizer - wip
+Experimental optimizer - ASR/NLP
 
 #### Maxfactor
 
         
-        class Maxfactor(Optimizer):
-            def __init__(self, params, lr=1e-3, beta1=0.9, beta2=0.999, eps=1e-8, weight_decay=0, grad_clip=None, lr_scheduler=None, wd_scheduler=None):
-                defaults = dict(lr=lr, beta1=beta1, beta2=beta2, eps=eps, weight_decay=weight_decay, grad_clip=grad_clip)
-                super(Maxfactor, self).__init__(params, defaults)
-                self.lr_scheduler = lr_scheduler
-                self.wd_scheduler = wd_scheduler
+        class MaxFactor(Optimizer):
+            def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, weight_decay=0.0, gamma=0.99, eps_rms=1e-8):
+                defaults = dict(lr=lr, beta2_decay=beta2_decay, eps=eps, d=d, weight_decay=weight_decay, gamma=gamma, eps_rms=eps_rms)
+                super().__init__(params, defaults)
         
+            @torch.no_grad()
             def step(self, closure=None):
                 loss = None
                 if closure is not None:
-                    loss = closure()
+                    with torch.enable_grad():
+                        loss = closure()
         
                 for group in self.param_groups:
-                    for param in group['params']:
-                        if param.grad is None:
+                    params_with_grad, grads, row_vars, col_vars, v, state_steps = [], [], [], [], [], []
+                    eps1, eps2 = group["eps"]
+                    for p in group["params"]:
+                        if p.grad is None:
                             continue
-                        
-                        grad = param.grad.data
-                        state = self.state[param]
+                        grad = p.grad
+                        if grad.dtype in {torch.float16, torch.bfloat16}:
+                            grad = grad.float()
         
-                        # State initialization
+                        state = self.state[p]
                         if len(state) == 0:
-                            state['step'] = 0
-                            state['exp_avg'] = torch.zeros_like(param.data)
-                            state['exp_inf'] = torch.zeros_like(param.data)
+                            state["step"] = torch.tensor(0.0, dtype=torch.float32)
+                            if p.grad.dim() > 1:
+                                row_shape, col_shape = list(p.grad.shape), list(p.grad.shape)
+                                row_shape[-1], col_shape[-2] = 1, 1
+                                state["row_var"], state["col_var"] = p.grad.new_zeros(row_shape), p.grad.new_zeros(col_shape)
+                            else:
+                                state["v"] = torch.zeros_like(p, memory_format=torch.preserve_format)
+                        row_vars.append(state.get("row_var", None))
+                        col_vars.append(state.get("col_var", None))
+                        v.append(state["v"])
+                        state_steps.append(state["step"])
+                        params_with_grad.append(p)
+                        grads.append(grad)
         
-                        exp_avg, exp_inf = state['exp_avg'], state['exp_inf']
-                        beta1, beta2 = group['beta1'], group['beta2']
+                    for i, param in enumerate(params_with_grad):
+                        grad = grads[i]
+                        if group["maximize"]:
+                            grad = -grad
+                        step_t, row_var, col_var, vi = state_steps[i], row_vars[i], col_vars[i], v[i]
+                        if eps1 is None:
+                            eps1 = torch.finfo(param.dtype).eps
+                        step_t += 1
+                        step_float, one_minus_beta2_t = step_t.item(), step_t.item() ** group["beta2_decay"]
+                        rho_t, alpha = min(group["lr"], 1 / (step_float ** 0.5)), max(eps2, param.norm(2).item() / (param.numel() ** 0.5)) * rho_t
+                        if group["weight_decay"]!= 0:
+                            param.mul_(1 - group["lr"] * group["weight_decay"])
         
-                        state['step'] += 1
-        
-                        # Adafactor-like scaling of gradient
-                        grad_sq = grad * grad + group['eps']
-                        factor = torch.sqrt(torch.mean(grad_sq))
-                        grad /= factor
-        
-                        # AdaMax update
-                        exp_avg.mul_(beta1).add_(1 - beta1, grad)
-                        exp_inf = torch.max(exp_inf, grad.abs())
-                        step_size = group['lr'] / (1 - beta1 ** state['step'])
-        
-                        param.data.addcdiv_(-step_size, exp_avg, exp_inf + group['eps'])
-        
-                        # Gradient clipping
-                        if group['grad_clip'] is not None:
-                            torch.nn.utils.clip_grad_norm_(group['params'], group['grad_clip'])
-        
-                        # Apply weight decay if specified
-                        if group['weight_decay'] != 0:
-                            param.data.add_(-group['lr'] * group['weight_decay'], param.data)
-        
-                # Step the learning rate scheduler if provided
-                if self.lr_scheduler is not None:
-                    self.lr_scheduler.step()
-        
-                # Step the weight decay scheduler if provided
-                if self.wd_scheduler is not None:
-                    for group in self.param_groups:
-                        group['weight_decay'] = self.wd_scheduler.get_lr()[0]
-        
+                        if grad.dim() > 1:
+                            row_mean = torch.norm(grad, dim=-1, keepdim=True).square_().div_(grad.size(-1))
+                            row_var.lerp_(row_mean, one_minus_beta2_t)
+                            col_mean = torch.norm(grad, dim=-2, keepdim=True).square_().div_(grad.size(-2))
+                            col_var.lerp_(col_mean, one_minus_beta2_t)
+                            var_estimate = row_var @ col_var
+                            var_estimate.div_(row_var.max(dim=-2, keepdim=True).clamp_(min=eps1))
+                        else:
+                            vi.mul_(group["gamma"]).add_(1 - group["gamma"], grad ** 2)
+                            var_estimate = vi
+                        update = var_estimate.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
+                        update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
+                        denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
+                        param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
                 return loss
+
         
-        
-        optimizer = Maxfactor(model.parameters(), lr=0.01, grad_clip=1.0, lr_scheduler=lr_scheduler, wd_scheduler=wd_scheduler)
+        optimizer = Maxfactor(model.parameters(), lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, weight_decay=0.0, gamma=0.99, eps_rms=1e-8)
 
