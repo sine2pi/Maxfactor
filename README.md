@@ -1,11 +1,14 @@
 Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I found worked well for ASR models. Part Adafactor part RMSprop part Adamax part something else I can't remember where it came from.
 
 #### Maxfactor
-        
-        
+
         class MaxFactor(Optimizer):
-            def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, weight_decay=0.0, gamma=0.99, eps_rms=1e-8, maximize=False):
-                defaults = dict(lr=lr, beta2_decay=beta2_decay, eps=eps, d=d, weight_decay=weight_decay, gamma=gamma, eps_rms=eps_rms, maximize=maximize)
+            def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, 
+                         weight_decay=0.0, gamma=0.99, eps_rms=1e-8, maximize=False):
+                
+                defaults = dict(lr=lr, beta2_decay=beta2_decay, eps=eps, d=d, weight_decay=weight_decay, 
+                                gamma=gamma, eps_rms=eps_rms, maximize=maximize)
+        
                 super().__init__(params, defaults)
         
             @torch.no_grad()
@@ -33,6 +36,7 @@ Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I 
                                 row_shape[-1], col_shape[-2] = 1, 1
                                 state["row_var"], state["col_var"] = p.grad.new_zeros(row_shape), p.grad.new_zeros(col_shape)
                             state["v"] = torch.zeros_like(p, memory_format=torch.preserve_format)
+        
                         row_vars.append(state.get("row_var", None))
                         col_vars.append(state.get("col_var", None))
                         v.append(state["v"])
@@ -76,16 +80,24 @@ Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I 
                         update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
                         denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
                         param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
-                return loss
         
-        optimizer2 = MaxFactor(
+                return loss
+            
+        optimizer = MaxFactor(
             model.parameters(), 
-            lr=0.01, 
-            beta2_decay=-0.8, 
-            eps=(None, 1e-3), 
-            d=1.0, 
-            weight_decay=0.0, 
+            lr=0.025,  
+            beta2_decay=-0.8,
+            eps=(None, 1e-4),
+            d=1.0,
+            weight_decay=0.0025,
             gamma=0.99, 
             eps_rms=1e-8,
             maximize=False,
+            )
+        
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer=optimizer,
+            T_max=training_args.max_steps,
+            eta_min=0.0,
+            last_epoch=-1  
         )
