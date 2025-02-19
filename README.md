@@ -1,8 +1,8 @@
 Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I found worked well for ASR models. Part Adafactor part RMSprop part Adamax part something else I can't remember where it came from.
 
 #### Maxfactor (not ready)
-        
-        class MaxFactor(Optimizer):
+
+        class MaxFactor(torch.optim.Optimizer):
             def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, 
                          weight_decay=0.0, gamma=0.99, eps_rms=1e-8, maximize=False):
                 
@@ -21,7 +21,6 @@ Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I 
                 for group in self.param_groups:
                     params_with_grad, grads, row_vars, col_vars, v, state_steps = [], [], [], [], [], []
                     eps1, eps2 = group["eps"]
-                    eps_rms = group["eps_rms"]
                     for p in group["params"]:
                         if p.grad is None:
                             continue
@@ -61,16 +60,16 @@ Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I 
                         rho_t = min(group["lr"], 1 / (step_float ** 0.5))
                         alpha = max(eps2, param.norm(2).item() / (param.numel() ** 0.5)) * rho_t
         
-                        if group["weight_decay"] != 0:
+                        if group["weight_decay"]!= 0:
                             param.mul_(1 - group["lr"] * group["weight_decay"])
         
                         if grad.dim() > 1:
-                            row_mean = torch.norm(grad, dim=-1, keepdim=True).square_().div_(grad.size(-1) + eps_rms)
+                            row_mean = torch.norm(grad, dim=-1, keepdim=True).square_().div_(grad.size(-1))
                             row_var.lerp_(row_mean, one_minus_beta2_t)
-                            col_mean = torch.norm(grad, dim=-2, keepdim=True).square_().div_(grad.size(-2) + eps_rms)
+                            col_mean = torch.norm(grad, dim=-2, keepdim=True).square_().div_(grad.size(-2))
                             col_var.lerp_(col_mean, one_minus_beta2_t)
                             var_estimate = row_var @ col_var
-                            max_row_var = row_var.max(dim=-2, keepdim=True)[0]
+                            max_row_var = row_var.max(dim=-2, keepdim=True)[0]  
                             var_estimate.div_(max_row_var.clamp_(min=eps1))
         
                         else:
@@ -83,36 +82,23 @@ Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I 
                         param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
         
                 return loss
+            
+                optimizer = MaxFactor(
+                    params=model.parameters(), 
+                    lr=0.025,  
+                    beta2_decay=-0.8,
+                    eps=(None, 1e-4),
+                    d=1.0,
+                    weight_decay=0.0025,
+                    gamma=0.99, 
+                    eps_rms=1e-8,
+                    maximize=False,
+                    )
                 
-#### example usage
-
-         optimizer = MaxFactor(
-             model.parameters(), 
-             lr=0.0025,  
-             beta2_decay=-0.8,
-             eps=(None, 1e-4),
-             d=1.0,
-             weight_decay=0.00025,
-             gamma=0.99, 
-             eps_rms=1e-8,
-             maximize=False,
-             )
+                scheduler = torch.optim.lr_scheduler.LambdaLR(
+                    optimizer = optimizer,
+                    lr_lambda=lambda step: 0.25 ** (step / training_args.max_steps),
+                    last_epoch=-1  
+                
+                )
         
-         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-             optimizer=optimizer,
-             T_max=training_args.max_steps,
-             eta_min=0.0,
-             last_epoch=-1  
-         )
-
-         trainer = Seq2SeqTrainer(
-             args=training_args,
-             model=model,
-             train_dataset=dataset["train"],
-             eval_dataset=dataset["test"],
-             data_collator=data_collator,
-             compute_metrics=compute_metrics,
-             processing_class=feature_extractor,
-             optimizers=(optimizer, scheduler),
-             callbacks=[metrics_callback],
-         )
