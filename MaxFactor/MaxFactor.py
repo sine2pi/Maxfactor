@@ -1,3 +1,4 @@
+
 class MaxFactor(torch.optim.Optimizer):
     def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, 
                  weight_decay=0.0, gamma=0.99, eps_rms=1e-8, maximize=False):
@@ -60,9 +61,9 @@ class MaxFactor(torch.optim.Optimizer):
                     param.mul_(1 - group["lr"] * group["weight_decay"])
 
                 if grad.dim() > 1:
-                    row_mean = torch.norm(grad, dim=-1, keepdim=True).square_().div_(grad.size(-1))
+                    row_mean = torch.linalg.norm(grad, dim=-1, keepdim=True).square_().div_(grad.size(-1) + 1e-8)
                     row_var.lerp_(row_mean, one_minus_beta2_t)
-                    col_mean = torch.norm(grad, dim=-2, keepdim=True).square_().div_(grad.size(-2))
+                    col_mean = torch.linalg.norm(grad, dim=-2, keepdim=True).square_().div_(grad.size(-2) + 1e-8)
                     col_var.lerp_(col_mean, one_minus_beta2_t)
                     var_estimate = row_var @ col_var
                     max_row_var = row_var.max(dim=-2, keepdim=True)[0]  
@@ -73,7 +74,7 @@ class MaxFactor(torch.optim.Optimizer):
                     var_estimate = vi
                 
                 update = var_estimate.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
-                update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
+                update = update.div_(torch.linalg.norm(update, float('inf')).clamp_(min=eps1))
                 denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
                 param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
 
@@ -83,7 +84,7 @@ optimizer = MaxFactor(
     params=model.parameters(), 
     lr=0.025,  
     beta2_decay=-0.8,
-    eps=(None, 1e-4),
+    eps=(1e-10, 1e-4),
     d=1.0,
     weight_decay=0.0025,
     gamma=0.99, 
@@ -93,7 +94,7 @@ optimizer = MaxFactor(
 
 scheduler = torch.optim.lr_scheduler.LambdaLR(
     optimizer = optimizer,
-    lr_lambda=lambda step: 0.25 ** (step / training_args.max_steps),
+    lr_lambda=lambda step: 0.5 ** (step / training_args.max_steps),
     last_epoch=-1  
 
 )
