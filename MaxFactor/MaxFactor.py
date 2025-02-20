@@ -101,16 +101,3 @@ optimizer = MaxFactor(
     eps_rms=1e-8,
     maximize=False,
     )
-
-cosin_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-    optimizer=optimizer,
-    T_max=training_args.max_steps,
-    eta_min=0.0025,
-    last_epoch=-1  
-)
-
-def lr_lambda(current_step):
-    cosin_scheduler.step()
-    return cosin_scheduler.get_last_lr()[0] / optimizer.param_groups[0]['lr']
-
-scheduler = LambdaLR(optimizer=optimizer, lr_lambda=lr_lambda)
