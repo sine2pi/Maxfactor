@@ -1,5 +1,5 @@
 Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I found worked well for ASR models. Part Adafactor part RMSprop part Adamax part something else I can't remember where it came from.
-If you want to use this with hugging face trainer and a scheduler of your choice you need to first wrap your scheduler in LambaLR which is outlined below.
+Optional: If you want to use this with hugging face trainer with a scheduler of your choice and you get an error you may need to first wrap your scheduler in LambaLR which is outlined below. Otherwise, use it normally.
 #### Maxfactor (not ready)
                       
           
