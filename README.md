@@ -1,6 +1,4 @@
-Experimental optimizer(wip) - ASR/NLP - A mix of things from other optimizers I found worked well for ASR models. Part Adafactor part RMSprop part Adamax part something else I can't remember where it came from.
-Optional: If you want to use this with hugging face trainer with a scheduler of your choice and you get an error you may need to first wrap your scheduler in LambaLR which is outlined below. Otherwise, use it normally.
-#### Maxfactor (not ready)
+```python
                       
           
     class MaxFactor(Optimizer):
@@ -98,7 +96,7 @@ Optional: If you want to use this with hugging face trainer with a scheduler of 
         params=model.parameters(), 
         lr=0.01,  
         beta2_decay=-0.8,
-        eps=(1e-30, 1e-4),
+        eps=(1e-10, 1e-4),
         d=1.0,
         weight_decay=0.0,
         gamma=0.99, 
