@@ -2,7 +2,7 @@
 
 MaxFactor core is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for transformer models. Its main contribution is the effective combination and tuning of these techniques rather than introducing fundamentally new algorithms.
 
-The optimizer combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. While not introducing fundamentally new techniques, its particular combination of approaches addresses practical challenges in training large speech models like Whisper.
+It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. While not introducing fundamentally new techniques, its particular combination of approaches addresses practical challenges in training large speech models like Whisper.
 
 The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. For whatever reason, every AI model I've tried to use for editing breaks this optimizer. (just an interesting side note)
 
