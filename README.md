@@ -35,6 +35,8 @@ What's compelling about the Frequency-Adaptive Momentum approach is that it ackn
 
 By applying different momentum factors to different frequency bands in parameter space, we're essentially giving the optimizer information about the audio domain that it wouldn't otherwise have.
 
+- Maxfactor family tree:
+
 Adam
 
 ├── Adaptive learning rates 
