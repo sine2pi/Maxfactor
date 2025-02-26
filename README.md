@@ -12,16 +12,14 @@ Frequency-Adaptive Momentum (FAM)
 
 Core Concept: Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms - it's transformed and preserved in ways that the model's parameters adapt to capture.
 
-The Chain of Frequency Information
-Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates
+The Chain of Frequency Information: Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates. 
 This isn't just a theoretical connection - it's empirically observable in how transformer-based speech models learn:
 
-Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram
-Attention heads specialize in tracking particular acoustic patterns across time
-The model inherently develops a hierarchical representation from acoustic features to phonetic units to words
+Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram.
+Attention heads specialize in tracking particular acoustic patterns across time.
+The model inherently develops a hierarchical representation from acoustic features to phonetic units to words.
 
- The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
-
+ - The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
 Adam
 
@@ -63,7 +61,8 @@ Gradient Clipping
 
 MaxFactor
 
-└── Combines all above features with a couple unique twists.
+└── Combines all above features with a couple unique twists. (and fam)
+
 
 
 ###   Key Features
