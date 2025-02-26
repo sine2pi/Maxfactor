@@ -1,11 +1,14 @@
 
 
-MaxFactor is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for transformer models. Its main contribution is the effective combination and tuning of these techniques rather than introducing fundamentally new algorithms.
+MaxFactor core is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for transformer models. Its main contribution is the effective combination and tuning of these techniques rather than introducing fundamentally new algorithms.
 
 MaxFactor combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. While not introducing fundamentally new techniques, its particular combination of approaches addresses practical challenges in training large speech models like Whisper.
 
 The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. For whatever reason, every AI model I've tried to use for editing breaks this optimizer. (just an interesting side note)
 
+The FAM is experimental (at the bottom) and is unique to Maxfactor but it doesn't work yet.
+Frequency-Adaptive Momentum (FAM)
+Core Concept: Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. Here I try to integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
 
 Adam
@@ -385,6 +388,165 @@ class AdaptiveSchedule(torch.optim.lr_scheduler.LambdaLR):
         else:
 
             return super().get_lr()
+        
+
+#### very experimental
+
+def frequency_adaptive_momentum(grad, state, alpha=0.9, beta=0.999):
+    """
+    Apply frequency-adaptive momentum to gradients.
+    
+    Args:
+        grad: Current gradient
+        state: Optimizer state containing spectral history
+        alpha: Short-term frequency decay factor
+        beta: Long-term frequency decay factor
+    
+    Returns:
+        Updated gradient with frequency-adaptive momentum
+    """
+    # Initialize state if needed
+    if "freq_history" not in state:
+        state["freq_history"] = {}
+        state["step_freq"] = 0
+    
+    state["step_freq"] += 1
+    
+    # For matrices (likely attention-related parameters)
+    if grad.dim() > 1 and min(grad.shape) > 4:  # Only for substantial matrices
+        # Compute spectral signature using FFT on flattened gradient
+        with torch.no_grad():
+            # Sample spectral signature for efficiency
+            if grad.numel() > 10000:
+                # Sample along both dimensions for large matrices
+                row_indices = torch.randperm(grad.size(0))[:min(grad.size(0), 100)]
+                col_indices = torch.randperm(grad.size(1))[:min(grad.size(1), 100)]
+                grad_sample = grad[row_indices][:, col_indices].flatten()
+            else:
+                grad_sample = grad.flatten()
+            
+            # Get frequency representation
+            freq_repr = torch.fft.rfft(grad_sample.float())
+            freq_power = torch.abs(freq_repr)
+            
+            # Normalize power spectrum
+            if freq_power.sum() > 0:
+                freq_power = freq_power / freq_power.sum()
+            
+            # Track frequency bands (divide spectrum into 10 bands)
+            n_bands = 10
+            band_size = freq_power.shape[0] // n_bands
+            band_powers = [freq_power[i*band_size:(i+1)*band_size].sum().item() 
+                          for i in range(n_bands)]
+            
+            # Update frequency history with exponential averaging
+            for i, power in enumerate(band_powers):
+                if f"band_{i}" not in state["freq_history"]:
+                    state["freq_history"][f"band_{i}"] = power
+                else:
+                    state["freq_history"][f"band_{i}"] = (
+                        beta * state["freq_history"][f"band_{i}"] +
+                        (1-beta) * power
+                    )
+            
+            # Compute adaptive dampening factors based on frequency history
+            # High-frequency components get more dampening
+            dampening_factors = []
+            for i in range(n_bands):
+                # Higher bands get more dampening, but modulated by recent activity
+                base_dampening = i / n_bands  # 0 to 0.9
+                recent_activity = state["freq_history"][f"band_{i}"]
+                
+                # Bands with more recent activity get less dampening (more momentum)
+                adaptive_dampening = base_dampening * (1 - recent_activity * 5)
+                dampening_factors.append(max(0, min(0.9, adaptive_dampening)))
+            
+            # Apply frequency-selective momentum to the gradient
+            if "momentum_buffer" not in state:
+                state["momentum_buffer"] = torch.zeros_like(grad)
+            
+            # Apply band-specific momentum with inverse FFT
+            momentum_buffer = state["momentum_buffer"].flatten()
+            freq_momentum = torch.fft.rfft(momentum_buffer[:grad_sample.shape[0]].float())
+            
+            # Apply different momentum factors to different frequency bands
+            for i in range(n_bands):
+                start_idx = i * band_size
+                end_idx = (i+1) * band_size
+                dampening = dampening_factors[i]
+                
+                # Higher momentum for bands with higher recent activity
+                momentum_factor = alpha * (1 - dampening)
+                grad_factor = 1.0 + dampening  # Boost gradient for damped frequencies
+                
+                # Apply selective momentum in frequency domain
+                if start_idx < freq_momentum.shape[0]:
+                    actual_end = min(end_idx, freq_momentum.shape[0])
+                    freq_momentum[start_idx:actual_end] = (
+                        momentum_factor * freq_momentum[start_idx:actual_end] +
+                        grad_factor * freq_repr[start_idx:actual_end]
+                    )
+            
+            # Convert back to time domain and reshape
+            new_grad_sample = torch.fft.irfft(freq_momentum, n=grad_sample.shape[0])
+            
+            # Update momentum buffer (in time domain)
+            state["momentum_buffer"] = alpha * state["momentum_buffer"] + (1-alpha) * grad
+            
+            # Calculate adaptation factor to blend with original gradient
+            # Early steps: more gradient, later steps: more frequency adaptation
+            blend_factor = min(0.8, state["step_freq"] / 1000)
+            
+            # Create a scaling mask based on frequency characteristics
+            scaling_mask = torch.ones_like(grad)
+            
+            # For demonstration - actual implementation would map frequency insights
+            # back to the full gradient in a more sophisticated way
+            if state["step_freq"] > 100:  # Only apply after initial training
+                # Example: Speech models often have issues with high-frequency noise
+                # Identify components likely responding to different frequencies
+                
+                # Compute row and column variances as proxies for frequency response
+                row_var = grad.var(dim=1, keepdim=True)
+                col_var = grad.var(dim=0, keepdim=True)
+                
+                # Normalize
+                row_var = row_var / (row_var.mean() + 1e-8)
+                col_var = col_var / (col_var.mean() + 1e-8)
+                
+                # Create mask emphasizing stable gradient components
+                scaling_mask = 1.0 + 0.5 * (
+                    torch.sigmoid(3 * (row_var - 1.5)) @ 
+                    torch.sigmoid(3 * (col_var - 1.5)).T
+                )
+            
+            # Apply adaptive mask to gradient
+            grad = grad * scaling_mask
+            
+            return grad
+    else:
+        # For vectors and small matrices, use standard momentum
+        if "momentum_buffer" not in state:
+            state["momentum_buffer"] = torch.zeros_like(grad)
+            
+        state["momentum_buffer"] = alpha * state["momentum_buffer"] + (1-alpha) * grad
+        return state["momentum_buffer"]
+
+@torch.no_grad()
+def step(self, closure=None):
+   
+    for i, param in enumerate(params_with_grad):
+        grad = grads[i]
+        state = self.state[param]
+        
+        # Apply frequency-adaptive momentum if enabled
+        if self.use_fam and param.dim() > 1:
+            grad = frequency_adaptive_momentum(
+                grad, 
+                state,
+                alpha=self.fam_alpha,
+                beta=self.fam_beta
+            )
         
 
 ```
