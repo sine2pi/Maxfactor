@@ -21,6 +21,17 @@ The model inherently develops a hierarchical representation from acoustic featur
 
  - The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
+Why This Optimizer Makes Sense
+What's compelling about the Frequency-Adaptive Momentum approach is that it acknowledges this structure in the optimization process itself. Rather than treating all gradient dimensions equally, it recognizes that:
+
+- Gradient Frequencies Matter: The Fourier transform of gradient updates reveals patterns related to what the model is currently learning
+
+- Different Parameters Process Different Bands: Just as our ears have frequency-specific receptors, different parts of the model specialize in different acoustic frequencies
+
+- Temporal Structure in Learning: Speech learning happens in stages - first basic acoustics, then phonetic patterns, then linguistic structures
+
+By applying different momentum factors to different frequency bands in parameter space, we're essentially giving the optimizer information about the audio domain that it wouldn't otherwise have.
+
 Adam
 
 ├── Adaptive learning rates 
