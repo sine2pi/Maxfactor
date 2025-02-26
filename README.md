@@ -7,10 +7,20 @@ MaxFactor combines proven optimization techniques from several established algor
 The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. For whatever reason, every AI model I've tried to use for editing breaks this optimizer. (just an interesting side note)
 
 The FAM is experimental (at the bottom) and is unique to Maxfactor but it doesn't work yet.
+
 Frequency-Adaptive Momentum (FAM)
-Core Concept: Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
+Core Concept: Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms - it's transformed and preserved in ways that the model's parameters adapt to capture.
 
+The Chain of Frequency Information
+Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates
+This isn't just a theoretical connection - it's empirically observable in how transformer-based speech models learn:
+
+Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram
+Attention heads specialize in tracking particular acoustic patterns across time
+The model inherently develops a hierarchical representation from acoustic features to phonetic units to words
+
+ The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
 
 Adam
