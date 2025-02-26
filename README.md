@@ -1,5 +1,63 @@
 For some reason every ai model I've tried to use for editing breaks this optimizer..
 
+
+Adam
+
+├── Adaptive learning rates 
+
+└── EMA of second moments
+
+Adafactor
+
+├── Factorized second moments
+
+└── Relative step sizing
+
+SignSGD
+
+└── Sign-based updates
+
+LAMB/LARS
+
+├── Layer-wise adaptivity
+
+└── Gradient normalization
+
+AdamW
+
+└── Decoupled weight decay
+
+RMSprop
+
+└── Root mean squared gradient scaling
+
+Gradient Clipping
+
+└── Max norm constraints
+
+MaxFactor
+
+└── Combines all above features with unique innovations:
+
+Beyond combining existing approaches, MaxFactor introduces several novel elements:
+
+1. **Adaptive Dimension-Aware Processing**  
+   Automatically switches between factorized and full second moments based on parameter dimensionality
+
+2. **Max Row Variance Normalization**  
+   Uses maximum row variance for better scaling in attention matrices, improving stability in transformer training
+
+3. **Sign-Magnitude Separation**  
+   Decouples update direction (sign) from magnitude for better handling of noisy gradients common in speech models
+
+4. **Dynamic LR Calculation**  
+   Computes learning rates based on both step count and parameter statistics, eliminating the need for complex scheduling
+
+5. **Structure-Preserving Updates**  
+   Applies parameter-structure-aware updates, treating matrices and vectors differently to preserve important relationships
+
+This hybrid approach makes MaxFactor particularly effective for transformer models like Whisper, which contain parameters of widely varying scales and dimensionality, from token embeddings to attention matrices to feed-forward projections.
+
 ### # MaxFactor Optimizer
 
 ###  ## Overview
