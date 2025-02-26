@@ -1,5 +1,8 @@
-For some reason every ai model I've tried to use for editing breaks this optimizer..
 
+
+MaxFactor is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for transformer models. Its main contribution is the effective combination and tuning of these techniques rather than introducing fundamentally new algorithms.
+
+The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. For whatever reason, every AI model I've tried to use for editing breaks this optimizer.
 
 Adam
 
@@ -27,6 +30,10 @@ AdamW
 
 └── Decoupled weight decay
 
+Adamax
+
+└── Infinity normalization
+
 RMSprop
 
 └── Root mean squared gradient scaling
@@ -37,33 +44,10 @@ Gradient Clipping
 
 MaxFactor
 
-└── Combines all above features with unique innovations:
+└── Combines all above features with a couple unique twists.
 
-Beyond combining existing approaches, MaxFactor introduces several novel elements:
 
-1. **Adaptive Dimension-Aware Processing**  
-   Automatically switches between factorized and full second moments based on parameter dimensionality
-
-2. **Max Row Variance Normalization**  
-   Uses maximum row variance for better scaling in attention matrices, improving stability in transformer training
-
-3. **Sign-Magnitude Separation**  
-   Decouples update direction (sign) from magnitude for better handling of noisy gradients common in speech models
-
-4. **Dynamic LR Calculation**  
-   Computes learning rates based on both step count and parameter statistics, eliminating the need for complex scheduling
-
-5. **Structure-Preserving Updates**  
-   Applies parameter-structure-aware updates, treating matrices and vectors differently to preserve important relationships
-
-This hybrid approach makes MaxFactor particularly effective for transformer models like Whisper, which contain parameters of widely varying scales and dimensionality, from token embeddings to attention matrices to feed-forward projections.
-
-### # MaxFactor Optimizer
-
-###  ## Overview
-####  MaxFactor is an optimization algorithm that combines adaptive learning rates with factorized second moments estimation, designed specifically for efficient training of large neural networks, particularly transformer-based models like Whisper and other speech/language architectures.
-
-###  ## Key Features
+###   Key Features
 
 ####  - **Adaptive Parameter-Specific Learning Rates**: Automatically adjusts learning rates based on parameter magnitudes and gradient statistics, eliminating the need for extensive learning rate tuning.
 
@@ -75,19 +59,6 @@ This hybrid approach makes MaxFactor particularly effective for transformer mode
 
 #### - **Gradient Self-Stabilization**: Automatically normalizes updates to prevent exploding or vanishing gradients without requiring external gradient clipping.
 
-### ## Why MaxFactor Works Well for Transformers
-
-###  Transformer architectures present unique optimization challenges that MaxFactor specifically addresses:
-
-####  1. **Attention Mechanism Optimization**: The factorized variance estimation is particularly effective for attention matrices, which often have structured sparsity patterns that benefit from row/column factorization.
-
-####  2. **Scale Variance Across Parameters**: Transformers contain parameters that operate at dramatically different scales (embeddings vs. attention weights vs. layer norms). MaxFactor's adaptive per-parameter scaling handles these differences automatically.
-
-####  3. **Long Training Stability**: The adaptive step size calculation based on parameter RMS values helps maintain stable updates throughout lengthy training sessions, avoiding the divergence issues common with fixed learning rate schedules.
-
-####  4. **Low Memory Footprint**: For large models like Whisper, memory efficiency becomes crucial. MaxFactor's factorized approach uses significantly less memory than Adam while maintaining comparable or better convergence.
-
-####  5. **Handles Mixed Precision Training**: Integrates smoothly with mixed precision training regimes, with built-in safeguards against numerical instability in low precision arithmetic.
 
 
 ```python
