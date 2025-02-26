@@ -21,7 +21,8 @@ The model inherently develops a hierarchical representation from acoustic featur
 
  - The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
-Why This Optimizer Makes Sense
+Why This Optimizer Makes Sense -
+
 What's compelling about the Frequency-Adaptive Momentum approach is that it acknowledges this structure in the optimization process itself. Rather than treating all gradient dimensions equally, it recognizes that:
 
 - Gradient Frequencies Matter: The Fourier transform of gradient updates reveals patterns related to what the model is currently learning
