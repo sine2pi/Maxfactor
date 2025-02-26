@@ -8,7 +8,9 @@ The optimizer makes practical engineering tradeoffs that work well empirically f
 
 The FAM is experimental (at the bottom) and is unique to Maxfactor but it doesn't work yet.
 Frequency-Adaptive Momentum (FAM)
-Core Concept: Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. Here I try to integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
+Core Concept: Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
+
+
 
 
 Adam
