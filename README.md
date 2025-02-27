@@ -37,8 +37,6 @@ MaxFactor
 └── Combines all above features with a couple unique twists. (and FAM)
 ```
 
-#### Memory Usage (relative to AdamW)
-MaxFactor uses **25.1% less memory** than AdamW while maintaining comparable memory efficiency to SGD (difference <0.1%).
 
 ### Key Advantages
 
@@ -56,8 +54,22 @@ MaxFactor is particularly valuable for:
 - Speech recognition and other audio processing tasks
 - Scenarios requiring a balance of accuracy and efficiency
 
+### Accuracy
+| Dataset      | SGD    | Adam   | AdamW  | MaxFactor |
+|--------------|--------|--------|--------|-----------|
+| MNIST        | 97.57% | 97.23% | 97.20% | 97.67%    |
+| CNN-CIFAR    | 54.17% | 21.43% | 21.47% | 51.43%    |
+| ConvNet-CIFAR| 48.37% | 32.13% | 32.30% | 46.30%    |
 
+### Convergence Speed (epochs to 90% of final accuracy)
+| Dataset      | SGD | Adam | AdamW | MaxFactor |
+|--------------|-----|------|-------|-----------|
+| MNIST        | 1   | 0    | 0     | 1         |
+| CNN-CIFAR    | 6   | 3    | 3     | 5         |
+| ConvNet-CIFAR| 7   | 6    | 6     | 7         |
 
+### Memory Usage (relative to AdamW)
+MaxFactor uses **25.1% less memory** than AdamW while maintaining comparable memory efficiency to SGD (difference <0.1%).
 
 
 
