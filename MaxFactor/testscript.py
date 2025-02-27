@@ -120,9 +120,8 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
     Returns:
         Dictionary with benchmark results
     """
-    # Default parameters
     if seeds is None:
-        seeds = [42, 123, 456]  # Multiple seeds for statistical significance
+        seeds = [42, 123, 456]
         
     if learning_rates is None:
         learning_rates = {
@@ -137,17 +136,13 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
             'SGD': lambda params, lr: torch.optim.SGD(params, lr=lr, momentum=0.9),
             'Adam': lambda params, lr: torch.optim.Adam(params, lr=lr),
             'AdamW': lambda params, lr: torch.optim.AdamW(params, lr=lr, weight_decay=0.0025),
-            'MaxFactor': lambda params, lr: MaxFactor(
-                params=params, lr=lr, beta2_decay=-0.7, eps=(1e-8, 1e-4), d=1.0,
-                weight_decay=0.01, gamma=0.99, eps_rms=1e-8, maximize=False)
+            'MaxFactor': lambda params, lr: MaxFactor(params, lr=lr)
 
         }
     
-    # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
-    # Load dataset
     if dataset_name.lower() == 'mnist':
         train_dataset = datasets.MNIST('./data', train=True, download=True,
                                       transform=transforms.Compose([
@@ -181,16 +176,12 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
     else:
         raise ValueError(f"Unsupported dataset: {dataset_name}")
     
-    # For quicker iterations, use a subset of the data during development
-    # Remove this for full benchmarks
-    train_dataset = Subset(train_dataset, range(5000))  # 5000 samples for training
-    test_dataset = Subset(test_dataset, range(1000))    # 1000 samples for testing
+    train_dataset = Subset(train_dataset, range(5000))
+    test_dataset = Subset(test_dataset, range(1000))
     
-    # Create data loaders
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
     
-    # Dictionary to store results
     results = {
         'train_loss': {},
         'train_acc': {},
@@ -201,7 +192,6 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
         'grad_norm': {},
     }
     
-    # Initialize results dictionaries
     for opt_name in optimizers_dict.keys():
         results['train_loss'][opt_name] = []
         results['train_acc'][opt_name] = []
@@ -211,11 +201,9 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
         results['param_update_norm'][opt_name] = []
         results['grad_norm'][opt_name] = []
     
-    # Run benchmark for each optimizer
     for opt_name, opt_constructor in optimizers_dict.items():
         print(f"\nBenchmarking optimizer: {opt_name}")
         
-        # Store results across seeds
         seed_train_losses = []
         seed_train_accs = []
         seed_test_losses = []
@@ -228,19 +216,15 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
             print(f"  Running with seed {seed} ({seed_idx+1}/{len(seeds)})")
             set_seed(seed)
             
-            # Create model
             model = model_fn(input_channels, num_classes).to(device)
             
-            # Create optimizer
             lr = learning_rates.get(opt_name, 0.01)
             optimizer = opt_constructor(model.parameters(), lr)
             
-            # Create scheduler (cosine annealing)
             scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
                 optimizer, T_max=epochs, eta_min=lr/10
             )
             
-            # Lists to store metrics for this run
             train_losses = []
             train_accs = []
             test_losses = []
@@ -249,27 +233,21 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
             update_norms = []
             grad_norms = []
             
-            # Training loop
             for epoch in range(epochs):
                 start_time = time.time()
                 
-                # Train
                 model.train()
                 train_loss, train_acc, epoch_update_norm, epoch_grad_norm = train_epoch(
                     model, train_loader, optimizer, device
                 )
                 
-                # Evaluate
                 model.eval()
                 test_loss, test_acc = evaluate(model, test_loader, device)
                 
-                # Step scheduler
                 scheduler.step()
                 
-                # Record time
                 epoch_time = time.time() - start_time
                 
-                # Store metrics
                 train_losses.append(train_loss)
                 train_accs.append(train_acc)
                 test_losses.append(test_loss)
@@ -278,13 +256,11 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
                 update_norms.append(epoch_update_norm)
                 grad_norms.append(epoch_grad_norm)
                 
-                # Print progress
                 print(f"    Epoch {epoch+1}/{epochs} - "
                       f"Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.2f}%, "
                       f"Test Loss: {test_loss:.4f}, Test Acc: {test_acc:.2f}%, "
                       f"Time: {epoch_time:.2f}s")
             
-            # Store results for this seed
             seed_train_losses.append(train_losses)
             seed_train_accs.append(train_accs)
             seed_test_losses.append(test_losses)
@@ -293,7 +269,6 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
             seed_update_norms.append(update_norms)
             seed_grad_norms.append(grad_norms)
         
-        # Average results across seeds
         results['train_loss'][opt_name] = np.mean(seed_train_losses, axis=0)
         results['train_acc'][opt_name] = np.mean(seed_train_accs, axis=0)
         results['test_loss'][opt_name] = np.mean(seed_test_losses, axis=0)
@@ -302,7 +277,6 @@ def optimizer_benchmark(model_fn, dataset_name='mnist', batch_size=128,
         results['param_update_norm'][opt_name] = np.mean(seed_update_norms, axis=0)
         results['grad_norm'][opt_name] = np.mean(seed_grad_norms, axis=0)
     
-    # Plot results
     if save_plots:
         plot_metrics(results, dataset_name)
     
@@ -315,17 +289,14 @@ def train_epoch(model, train_loader, optimizer, device):
     correct = 0
     total = 0
     
-    # For tracking parameter updates and gradient norms
     param_update_norm = 0
     grad_norm = 0
     update_samples = 0
     
-    # Store initial parameters for computing updates
     initial_params = {}
     for name, param in model.named_parameters():
         initial_params[name] = param.clone().detach()
     
-    # Training loop
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
         
@@ -334,7 +305,6 @@ def train_epoch(model, train_loader, optimizer, device):
         loss = F.cross_entropy(output, target)
         loss.backward()
         
-        # Calculate gradient norm before optimizer step
         batch_grad_norm = 0
         for param in model.parameters():
             if param.grad is not None:
@@ -343,25 +313,21 @@ def train_epoch(model, train_loader, optimizer, device):
         
         optimizer.step()
         
-        # Sample parameter updates to avoid excessive memory usage
-        if batch_idx % 5 == 0:  # Sample every 5 batches
+        if batch_idx % 5 == 0:
             batch_update_norm = 0
             for name, param in model.named_parameters():
                 if name in initial_params:
                     update = param.detach() - initial_params[name]
                     batch_update_norm += update.norm(2).item() ** 2
-                    # Update initial params for next comparison
                     initial_params[name] = param.clone().detach()
             param_update_norm += batch_update_norm ** 0.5
             update_samples += 1
         
-        # Compute metrics
         train_loss += loss.item()
         pred = output.argmax(dim=1, keepdim=True)
         correct += pred.eq(target.view_as(pred)).sum().item()
         total += target.size(0)
     
-    # Normalize metrics
     train_loss /= len(train_loader)
     accuracy = 100. * correct / total
     param_update_norm = param_update_norm / max(1, update_samples)
@@ -391,10 +357,6 @@ def evaluate(model, test_loader, device):
     
     return test_loss, accuracy
 
-
-
-
-
 def set_seed(seed):
     """Set random seed for reproducibility"""
     torch.manual_seed(seed)
@@ -408,7 +370,6 @@ def plot_metrics(results, dataset_name):
     """Plot benchmark metrics"""
     plt.figure(figsize=(18, 12))
     
-    # Plot training loss
     plt.subplot(2, 3, 1)
     for opt_name, losses in results['train_loss'].items():
         plt.plot(losses, label=opt_name)
@@ -418,7 +379,6 @@ def plot_metrics(results, dataset_name):
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    # Plot test loss
     plt.subplot(2, 3, 2)
     for opt_name, losses in results['test_loss'].items():
         plt.plot(losses, label=opt_name)
@@ -428,7 +388,6 @@ def plot_metrics(results, dataset_name):
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    # Plot test accuracy
     plt.subplot(2, 3, 3)
     for opt_name, accs in results['test_acc'].items():
         plt.plot(accs, label=opt_name)
@@ -438,7 +397,6 @@ def plot_metrics(results, dataset_name):
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    # Plot time per epoch
     plt.subplot(2, 3, 4)
     for opt_name, times in results['time_per_epoch'].items():
         plt.plot(times, label=opt_name)
@@ -448,7 +406,6 @@ def plot_metrics(results, dataset_name):
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    # Plot parameter update norm
     plt.subplot(2, 3, 5)
     for opt_name, norms in results['param_update_norm'].items():
         plt.plot(norms, label=opt_name)
@@ -458,7 +415,6 @@ def plot_metrics(results, dataset_name):
     plt.legend()
     plt.grid(True, alpha=0.3)
     
-    # Plot gradient norm
     plt.subplot(2, 3, 6)
     for opt_name, norms in results['grad_norm'].items():
         plt.plot(norms, label=opt_name)
@@ -472,8 +428,6 @@ def plot_metrics(results, dataset_name):
     plt.savefig(f'optimizer_benchmark_{dataset_name}.png')
     plt.close()
 
-
-# Define model architectures for testing
 def create_mlp(input_channels, num_classes):
     """Create a simple MLP model"""
     return nn.Sequential(
@@ -484,7 +438,6 @@ def create_mlp(input_channels, num_classes):
         nn.ReLU(),
         nn.Linear(256, num_classes)
     )
-
 
 def create_cnn(input_channels, num_classes):
     """Create a simple CNN model"""
@@ -501,8 +454,6 @@ def create_cnn(input_channels, num_classes):
         nn.Linear(128, num_classes)
     )
 
-
-# Define a more challenging convnet model
 class ConvNet(nn.Module):
     def __init__(self, input_channels, num_classes):
         super(ConvNet, self).__init__()
@@ -511,10 +462,9 @@ class ConvNet(nn.Module):
         self.conv3 = nn.Conv2d(64, 128, 3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
         
-        # Calculate size after convolutions and pooling
-        if input_channels == 1:  # MNIST: 28x28
+        if input_channels == 1:
             fc_size = 128 * 3 * 3
-        else:  # CIFAR10: 32x32
+        else:
             fc_size = 128 * 4 * 4
             
         self.fc1 = nn.Linear(fc_size, 256)
@@ -532,11 +482,6 @@ class ConvNet(nn.Module):
         x = self.fc3(x)
         return x
 
-
-
-
-
-# Test all optimizers with different learning rates to find optimal settings
 def learning_rate_search():
     """Test different learning rates for each optimizer"""
     test_lrs = {
@@ -546,7 +491,6 @@ def learning_rate_search():
         'MaxFactor': [0.05, 0.01, 0.005, 0.001, 0.0005]
     }
     
-    # Results storage
     best_lrs = {}
     best_accuracies = {}
     
@@ -558,7 +502,6 @@ def learning_rate_search():
         for lr in lrs:
             print(f"  Testing lr={lr}")
             
-            # Define optimizer constructor with current learning rate
             if opt_name == 'SGD':
                 opt_constructor = lambda params, _: torch.optim.SGD(params, lr=lr, momentum=0.9)
             elif opt_name == 'Adam':
@@ -571,20 +514,16 @@ def learning_rate_search():
                     weight_decay=0.01, gamma=0.999, eps_rms=1e-8
                 )
             
-            # Test with this optimizer only
             optimizers_dict = {opt_name: opt_constructor}
             
-            # Create learning rate dict
             lr_dict = {opt_name: lr}
             
-            # Run shorter benchmark
             results = optimizer_benchmark(
                 create_cnn, 'mnist', batch_size=128, epochs=5, 
                 learning_rates=lr_dict, seeds=[42], 
                 optimizers_dict=optimizers_dict, save_plots=False
             )
             
-            # Check final accuracy
             final_acc = results['test_acc'][opt_name][-1]
             if final_acc > best_acc:
                 best_acc = final_acc
@@ -596,27 +535,19 @@ def learning_rate_search():
     
     return best_lrs, best_accuracies
 
-
 def advanced_test():
     """Run comprehensive benchmarks"""
-    # First find optimal learning rates
     best_lrs, _ = learning_rate_search()
     
-    # Define optimizers with best learning rates
     optimizers_dict = {
         'SGD': lambda params, lr: torch.optim.SGD(params, lr=best_lrs['SGD'], momentum=0.9),
         'Adam': lambda params, lr: torch.optim.Adam(params, lr=best_lrs['Adam']),
         'AdamW': lambda params, lr: torch.optim.AdamW(params, lr=best_lrs['AdamW'], weight_decay=0.01),
-        'MaxFactor': lambda params, lr: MaxFactor(
-            params, lr=best_lrs['MaxFactor'], beta2_decay=-0.8, eps=(1e-10, 1e-4), 
-            d=1.0, weight_decay=0.01, gamma=0.99, eps_rms=1e-8
-        )
+        'MaxFactor': lambda params, lr: MaxFactor(params, lr=best_lrs['MaxFactor'])
     }
     
-    # Run benchmarks on different models and datasets
     print("\nRunning comprehensive benchmarks...")
     
-    # CNN on MNIST
     print("\nBenchmarking CNN on MNIST")
     cnn_mnist_results = optimizer_benchmark(
         create_cnn, 'mnist', batch_size=128, epochs=10, 
@@ -624,7 +555,6 @@ def advanced_test():
         optimizers_dict=optimizers_dict, save_plots=True
     )
     
-    # CNN on CIFAR10
     print("\nBenchmarking CNN on CIFAR10")
     cnn_cifar_results = optimizer_benchmark(
         create_cnn, 'cifar10', batch_size=128, epochs=10, 
@@ -632,7 +562,6 @@ def advanced_test():
         optimizers_dict=optimizers_dict, save_plots=True
     )
     
-    # ConvNet on CIFAR10
     print("\nBenchmarking ConvNet on CIFAR10")
     convnet_cifar_results = optimizer_benchmark(
         ConvNet, 'cifar10', batch_size=128, epochs=10, 
@@ -652,19 +581,15 @@ def memory_usage_test():
     import gc
     import numpy as np
     
-    # Set device
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Using device: {device}")
     
-    # Create feature dimensions to test
     feature_dims = [100, 200, 400, 800, 1600]
     optimizers = ['SGD', 'Adam', 'AdamW', 'MaxFactor']
     
-    # Dictionary to store absolute memory usage (in MB)
     memory_usage = {opt: [] for opt in optimizers}
     feature_dims_list = []
     
-    # Function to measure GPU memory
     def get_gpu_memory_usage():
         if torch.cuda.is_available():
             torch.cuda.synchronize()
@@ -672,41 +597,33 @@ def memory_usage_test():
         else:
             return 0
     
-    # Fixed model architecture
-    hidden_dim = 2048  # Large enough to see memory differences
-    batch_size = 128   # Fixed batch size
+    hidden_dim = 2048
+    batch_size = 128
     
     print("Measuring memory usage...")
     
-    # For each feature dimension
     for feature_dim in feature_dims:
         print(f"\nTesting with feature dimension: {feature_dim}")
         feature_dims_list.append(feature_dim)
         
-        # Create fake dataset
         x = torch.randn(1000, feature_dim, device=device)
         y = torch.randint(0, 10, (1000,), device=device)
         
-        # Test each optimizer with a clean slate
         for opt_name in optimizers:
             print(f"  Testing {opt_name}...")
             
-            # Clear any existing models and optimizers
-            del x, y  # Delete previous dataset
+            del x, y
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
                 torch.cuda.synchronize()
             
-            # Recreate dataset
             x = torch.randn(1000, feature_dim, device=device)
             y = torch.randint(0, 10, (1000,), device=device)
             
-            # Starting memory - measure after dataset creation
             torch.cuda.synchronize() if torch.cuda.is_available() else None
             base_memory = get_gpu_memory_usage()
             
-            # Create model
             model = torch.nn.Sequential(
                 torch.nn.Linear(feature_dim, hidden_dim),
                 torch.nn.ReLU(),
@@ -715,13 +632,12 @@ def memory_usage_test():
                 torch.nn.Linear(hidden_dim // 2, 10)
             ).to(device)
             
-            # Create optimizer
             if opt_name == 'SGD':
                 optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
             elif opt_name == 'Adam':
                 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
             elif opt_name == 'AdamW':
-                optimizer = torch.optim.AdamW(model.parameters(), lr=0.001, weight_decay=0.01)
+                optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
             elif opt_name == 'MaxFactor':
                 optimizer = MaxFactor(
                     params=model.parameters(), 
@@ -735,7 +651,6 @@ def memory_usage_test():
                     maximize=False
                 )
             
-            # Do a single batch update to initialize all optimizer states
             inputs, targets = x[:batch_size], y[:batch_size]
             outputs = model(inputs)
             loss = torch.nn.functional.cross_entropy(outputs, targets)
@@ -743,23 +658,17 @@ def memory_usage_test():
             loss.backward()
             optimizer.step()
             
-            # Ensure all operations are complete
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
             
-            # Measure memory after optimizer step
             current_memory = get_gpu_memory_usage()
-            
-            # Calculate absolute memory used
             memory_used = current_memory - base_memory
             memory_usage[opt_name].append(memory_used)
-            
+    
             print(f"    Memory used: {memory_used:.2f} MB")
             
-            # Clean up
             del model, optimizer, inputs, targets, outputs, loss
     
-    # Create result dictionary
     result = {
         'feature_dims': feature_dims_list,
         'memory_usage': memory_usage
@@ -773,7 +682,6 @@ def plot_memory_usage(memory_data):
     memory_usage = memory_data['memory_usage']
     optimizers = list(memory_usage.keys())
     
-    # Plot memory usage
     plt.figure(figsize=(10, 6))
     
     width = 0.2
@@ -791,33 +699,26 @@ def plot_memory_usage(memory_data):
     plt.tight_layout()
     plt.savefig('memory_usage_comparison.png')
     
-    # Return the data
     return {
         'feature_dims': feature_dims,
         'memory_usage': memory_usage
     }
 
-# Simple test harness
 def simple_test():
     """Run a simpler test for quick validation"""
-    # Use fixed learning rates
     learning_rates = {
         'SGD': 0.01,
         'Adam': 0.001,
         'MaxFactor': 0.01
     }
     
-    # Define optimizers
     optimizers_dict = {
         'SGD': lambda params, lr: torch.optim.SGD(params, lr=learning_rates['SGD'], momentum=0.9),
         'Adam': lambda params, lr: torch.optim.Adam(params, lr=learning_rates['Adam']),
-        'MaxFactor': lambda params, lr: MaxFactor(
-            params, lr=learning_rates['MaxFactor'], beta2_decay=-0.8, eps=(1e-8, 1e-4), 
-            d=1.0, weight_decay=0.025, gamma=0.99, eps_rms=1e-8
+        'MaxFactor': lambda params, lr: MaxFactor(params, lr=learning_rates['MaxFactor'],
         )
     }
     
-    # Run short benchmark on MNIST
     results = optimizer_benchmark(
         create_cnn, 'mnist', batch_size=128, epochs=5, 
         learning_rates=learning_rates, seeds=[42], 
@@ -841,7 +742,6 @@ def add_memory_usage_to_report(report, memory_data):
             report += f"  {opt_name}: {memory_usage[opt_name][dim]:.2f} MB\n"
         report += "\n"
     
-    # Calculate average memory savings
     if 'MaxFactor' in memory_usage and 'AdamW' in memory_usage:
         avg_maxfactor = np.mean(memory_usage['MaxFactor'])
         avg_adamw = np.mean(memory_usage['AdamW'])
@@ -859,13 +759,11 @@ def summary_report(results):
         report += f"Dataset: {dataset}\n"
         report += "-----------------\n"
         
-        # Final test accuracy
         report += "Final Test Accuracy:\n"
         for opt_name, accs in dataset_results['test_acc'].items():
             final_acc = accs[-1]
             report += f"  {opt_name}: {final_acc:.2f}%\n"
         
-        # Convergence speed (epochs to reach 90% of final accuracy)
         report += "\nConvergence Speed (epochs to 90% of final accuracy):\n"
         for opt_name, accs in dataset_results['test_acc'].items():
             final_acc = accs[-1]
@@ -873,13 +771,11 @@ def summary_report(results):
             epochs_to_target = next((i for i, acc in enumerate(accs) if acc >= target_acc), len(accs))
             report += f"  {opt_name}: {epochs_to_target} epochs\n"
         
-        # Average time per epoch
         report += "\nAverage Time per Epoch:\n"
         for opt_name, times in dataset_results['time_per_epoch'].items():
             avg_time = np.mean(times)
             report += f"  {opt_name}: {avg_time:.2f}s\n"
         
-        # Parameter update statistics
         report += "\nAverage Parameter Update Norm:\n"
         for opt_name, norms in dataset_results['param_update_norm'].items():
             avg_norm = np.mean(norms)
@@ -891,51 +787,24 @@ def summary_report(results):
 
 
 
-
-
-# if __name__ == "__main__":
-#     # For quick testing, run simple_test()
-#     print("Running simple test...")
-#     simple_results = simple_test()
-    
-#     # For comprehensive benchmarks, uncomment the following:
-#     print("Running comprehensive benchmarks...")
-#     advanced_results = advanced_test()
-#     report = summary_report(advanced_results)
-#     print(report)
-    
-
-#     log_dir = os.path.join('./test/benchmark/', datetime.now().strftime(format='%m-%d_%H'))
-#     os.makedirs(name=log_dir, exist_ok=True)
-#     # Save report to file
-#     with open(log_dir+"/optimizer_benchmark_report.txt", "w") as f:
-#         f.write(report)
-
-
 if __name__ == "__main__":
-    # For quick testing, run simple_test()
     print("Running simple test...")
     simple_results = simple_test()
     
-    # Run memory usage test
     print("\nRunning memory usage test...")
     memory_data = memory_usage_test()
     
-    # For comprehensive benchmarks, uncomment the following:
     print("\nRunning comprehensive benchmarks...")
     advanced_results = advanced_test()
     
-    # Generate report
     report = summary_report(advanced_results)
     
-    # Add memory usage to report
     report = add_memory_usage_to_report(report, memory_data)
     
     print(report)
     
     log_dir = os.path.join('./test/benchmark/', datetime.now().strftime(format='%m-%d_%H'))
     os.makedirs(name=log_dir, exist_ok=True)
-    # Save report to file
     with open(log_dir+"/optimizer_benchmark_report.txt", "w") as f:
         f.write(report)
 
