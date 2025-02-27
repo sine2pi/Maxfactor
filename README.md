@@ -1,3 +1,109 @@
+# MaxFactor Optimizer Analysis
+
+## Performance Summary
+
+### Accuracy
+
+**On MNIST (simple dataset):**
+- MaxFactor (96.17%) slightly underperforms compared to SGD (97.57%) and Adam variants (~97.2%)
+- Trails the best performer by about 1.4%
+
+**On CIFAR datasets (more complex):**
+- Significantly outperforms Adam/AdamW (by ~8-25%)
+- Performs better as task complexity increases
+
+### Convergence Speed
+
+- Slower on simple tasks (4 epochs vs 0-1 for others on MNIST)
+- Competitive on complex tasks (5-6 epochs, faster than SGD on CIFAR)
+- Performs better as task complexity increases
+
+### Computational Characteristics
+
+**Time efficiency:** 12-20% slower per epoch than other optimizers
+
+**Memory efficiency:**
+- Uses ~25.1% less memory than Adam/AdamW
+
+**Parameter update behavior:**
+- Makes more conservative updates (smallest parameter update norm)
+- Updates 2-4× smaller than Adam/AdamW
+
+## Practical Implications
+
+MaxFactor is a memory-efficient optimizer that trades some initial convergence speed for better performance on complex tasks. It would be particularly valuable for:
+- Memory-constrained environments
+- Complex datasets where Adam/AdamW tend to underperform
+- Models where conservative parameter updates may prevent overfitting
+
+Its balance between SGD's memory efficiency and adaptive optimizers' performance on complex tasks makes it an interesting alternative worth considering.
+
+## Core Concept
+
+MaxFactor core is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for transformer models. Its main contribution is the effective combination and tuning of these techniques rather than introducing fundamentally new algorithms.
+
+It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. While not introducing fundamentally new techniques as of yet, its particular combination of approaches addresses practical challenges in training large speech models like Whisper.
+
+The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. For whatever reason, every AI model I've tried to use for editing breaks this optimizer. (just an interesting side note)
+
+The FAM is experimental (at the bottom) and is unique to Maxfactor but it doesn't work yet.
+
+## Frequency-Adaptive Momentum (FAM)
+
+### Core Concept
+
+- Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms; it's transformed and preserved in ways that the model's parameters adapt to capture.
+- The Chain of Frequency Information: Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates.
+  This isn't just a theoretical connection - it's empirically observable in how transformer-based speech models learn:
+  - Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram.
+  - Attention heads specialize in tracking particular acoustic patterns across time.
+  - The model inherently develops a hierarchical representation from acoustic features to phonetic units to words.
+- The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
+
+### Why This Optimizer Makes Sense
+
+What's compelling about the Frequency-Adaptive Momentum approach is that it acknowledges this structure in the optimization process itself. Rather than treating all gradient dimensions equally, it recognizes that:
+- **Gradient Frequencies Matter:** The Fourier transform of gradient updates reveals patterns related to what the model is currently learning.
+- **Different Parameters Process Different Bands:** Just as our ears have frequency-specific receptors, different parts of the model specialize in different acoustic frequencies.
+- **Temporal Structure in Learning:** Speech learning happens in stages - first basic acoustics, then phonetic patterns, then linguistic structures.
+
+By applying different momentum factors to different frequency bands in parameter space, we're essentially giving the optimizer information about the audio domain that it wouldn't otherwise have.
+
+## MaxFactor Family Tree
+
+```
+Adam
+├── Adaptive learning rates 
+└── EMA of second moments
+
+Adafactor
+├── Factorized second moments
+└── Relative step sizing
+
+SignSGD
+└── Sign-based updates
+
+LAMB/LARS
+├── Layer-wise adaptivity
+└── Gradient normalization
+
+AdamW
+└── Decoupled weight decay
+
+Adamax
+└── Infinity normalization
+
+RMSprop
+└── Root mean squared gradient scaling
+
+Gradient Clipping
+└── Max norm constraints
+
+MaxFactor
+└── Combines all above features with a couple unique twists. (and FAM)
+
+
+
 MaxFactor Optimizer Analysis
 Performance Summary
 MaxFactor shows interesting performance characteristics compared to other optimizers:
