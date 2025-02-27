@@ -1,7 +1,9 @@
+
 MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. 
 
-The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. Its particular combination of approaches addresses practical challenges in training large speech and multimodal llms.
+The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. Its particular combination of approaches addresses practical challenges in training large speech and multimodal llms. 
 
+Why another optimizer? The architecture will serve as the foundation for the experimental Frequency-Adaptive Momentum (FAM) approach, which aims to leverage the inherent frequency structure of speech data in the optimization process itself.
 
 #### MaxFactor Family Tree
 
