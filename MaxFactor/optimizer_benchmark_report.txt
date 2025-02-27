@@ -7,7 +7,7 @@ Final Test Accuracy:
   SGD: 97.57%
   Adam: 97.23%
   AdamW: 97.20%
-  MaxFactor: 96.17%
+  MaxFactor: 96.03%
 
 Convergence Speed (epochs to 90% of final accuracy):
   SGD: 1 epochs
@@ -16,16 +16,16 @@ Convergence Speed (epochs to 90% of final accuracy):
   MaxFactor: 4 epochs
 
 Average Time per Epoch:
-  SGD: 1.14s
-  Adam: 1.17s
-  AdamW: 1.17s
-  MaxFactor: 1.42s
+  SGD: 2.42s
+  Adam: 2.46s
+  AdamW: 2.07s
+  MaxFactor: 1.81s
 
 Average Parameter Update Norm:
   SGD: 0.2764
   Adam: 0.5658
   AdamW: 0.5640
-  MaxFactor: 0.2420
+  MaxFactor: 0.2457
 
 
 Dataset: cnn_cifar
@@ -34,25 +34,25 @@ Final Test Accuracy:
   SGD: 54.17%
   Adam: 21.43%
   AdamW: 21.47%
-  MaxFactor: 46.50%
+  MaxFactor: 46.00%
 
 Convergence Speed (epochs to 90% of final accuracy):
   SGD: 6 epochs
   Adam: 3 epochs
   AdamW: 3 epochs
-  MaxFactor: 5 epochs
+  MaxFactor: 6 epochs
 
 Average Time per Epoch:
-  SGD: 1.89s
-  Adam: 1.91s
-  AdamW: 1.89s
-  MaxFactor: 2.13s
+  SGD: 1.90s
+  Adam: 1.93s
+  AdamW: 1.90s
+  MaxFactor: 2.32s
 
 Average Parameter Update Norm:
   SGD: 0.3957
   Adam: 0.3934
   AdamW: 0.3926
-  MaxFactor: 0.1698
+  MaxFactor: 0.1686
 
 
 Dataset: convnet_cifar
@@ -61,25 +61,25 @@ Final Test Accuracy:
   SGD: 48.37%
   Adam: 32.13%
   AdamW: 32.30%
-  MaxFactor: 40.83%
+  MaxFactor: 40.10%
 
 Convergence Speed (epochs to 90% of final accuracy):
   SGD: 7 epochs
   Adam: 6 epochs
   AdamW: 6 epochs
-  MaxFactor: 6 epochs
+  MaxFactor: 5 epochs
 
 Average Time per Epoch:
-  SGD: 1.97s
-  Adam: 1.98s
-  AdamW: 1.98s
-  MaxFactor: 2.34s
+  SGD: 2.00s
+  Adam: 2.00s
+  AdamW: 2.02s
+  MaxFactor: 2.61s
 
 Average Parameter Update Norm:
   SGD: 0.2950
   Adam: 0.8404
   AdamW: 0.8322
-  MaxFactor: 0.2240
+  MaxFactor: 0.2231
 
 
 
@@ -121,5 +121,5 @@ Feature Dimension: 1600
   AdamW: 82.21 MB
   MaxFactor: 61.69 MB
 
-MaxFactor uses 25.1% less memory than AdamW on average.
+MaxFactor uses 25.0% less memory than AdamW on average.
 
