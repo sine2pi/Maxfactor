@@ -14,7 +14,7 @@ MaxFactor core is best described as a thoughtful integration of existing optimiz
 - On CNN-CIFAR: MaxFactor (46.00%) significantly outperforms Adam/AdamW (~21.45%) but trails SGD (54.17%)
 - On ConvNet-CIFAR: MaxFactor (40.10%) outperforms Adam/AdamW (~32.2%) but trails SGD (48.37%)
 - Performs better as task complexity increases
-- 
+  
 ### Convergence Speed
 
 - Slower on simple tasks (4 epochs vs 0-1 for others on MNIST)
