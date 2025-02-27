@@ -1,6 +1,6 @@
-## Core Concept
+## MaxFactor
 
-MaxFactor core is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for encoder-decoder ASR/NLP transformer models. It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models and its particular combination of approaches addresses practical challenges in training speech LLMs.
+MaxFactor is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for encoder-decoder ASR/NLP transformer models. It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models and its particular combination of approaches addresses practical challenges in training speech LLMs.
 
 ### Performance Summary
 
