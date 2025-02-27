@@ -101,6 +101,10 @@ What's compelling about the Frequency-Adaptive Momentum approach is that it ackn
 
 By applying different momentum factors to different frequency bands in parameter space, we're essentially giving the optimizer information about the audio domain that it wouldn't otherwise have.
 
+![memory_usage_comparison](https://github.com/user-attachments/assets/2f046c15-f2b5-41ee-86e5-a2da8e10ea18)
+![optimizer_benchmark_mnist](https://github.com/user-attachments/assets/b664f18b-cd2c-4af5-84c1-31f2ed9d6f37)
+![optimizer_benchmark_cifar10](https://github.com/user-attachments/assets/c0784226-cb51-442c-af9c-323ef8b24320)
+
 
 ```python
 
