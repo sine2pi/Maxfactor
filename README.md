@@ -40,7 +40,7 @@ MaxFactor is best described as a thoughtful integration of existing optimization
 
 MaxFactor is a memory-efficient optimizer that trades some initial convergence speed for better performance on complex tasks. It would be particularly valuable for:
 - Memory-constrained environments
-- Complex datasets where Adam/AdamW tend to underperform, such as audio and text, or any dataset used in training a multimodal modal.
+- Complex datasets where Adam/AdamW tend to underperform, such as audio with text or images, or any dataset used in training a multimodal model.
 - Models where conservative parameter updates may prevent overfitting. Useful for ASR.
 
 Its balance between SGD's memory efficiency and adaptive optimizers' performance on complex tasks makes it an interesting alternative worth considering.
