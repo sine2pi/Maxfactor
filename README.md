@@ -299,6 +299,7 @@ def frequency_adaptive_momentum(grad, state, alpha=0.9, beta=0.999):
         state: Optimizer state containing spectral history
         alpha: Short-term frequency decay factor
         beta: Long-term frequency decay factor
+        theta: Because we like thetas
     
     Returns:
         Updated gradient with frequency-adaptive momentum
