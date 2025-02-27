@@ -1,4 +1,6 @@
-#### MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. Its particular combination of approaches addresses practical challenges in training large speech and multimodal llms.
+MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. 
+
+The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. Its particular combination of approaches addresses practical challenges in training large speech and multimodal llms.
 
 
 #### MaxFactor Family Tree
@@ -34,11 +36,38 @@ Gradient Clipping
 MaxFactor
 └── Combines all above features with a couple unique twists. (and FAM)
 ```
+
+#### Memory Usage (relative to AdamW)
+MaxFactor uses **25.1% less memory** than AdamW while maintaining comparable memory efficiency to SGD (difference <0.1%).
+
+### Key Advantages
+
+- **Superior accuracy** on simple tasks (MNIST)
+- **Competitive accuracy** on complex tasks, significantly outperforming Adam/AdamW
+- **Faster convergence** than SGD on some datasets
+- **Memory efficiency** matching SGD, using ~25% less memory than Adam/AdamW
+- **Stable optimization** across different model architectures and datasets
+
+### When to Use MaxFactor
+
+MaxFactor is particularly valuable for:
+- Memory-constrained environments
+- Complex datasets where Adam/AdamW underperform
+- Speech recognition and other audio processing tasks
+- Scenarios requiring a balance of accuracy and efficiency
+
+
+
+
+
+
+
+
 Coming soon -
+Additionally, it will introduce Frequency-Adaptive Momentum (FAM), an experimental approach specifically designed for speech recognition tasks that adapts momentum based on the frequency characteristics of gradient updates.
+### Frequency-Adaptive Momentum (FAM)
 
-## Frequency-Adaptive Momentum (FAM)
-
-### Core Concept
+#### Core Concept
 
 - Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms; it's transformed and preserved in ways that the model's parameters adapt to capture.
 - The Chain of Frequency Information: Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates.
@@ -48,7 +77,7 @@ Coming soon -
   - The model inherently develops a hierarchical representation from acoustic features to phonetic units to words.
 - The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
-### Why This Optimizer Makes Sense
+#### Why This Optimizer Makes Sense
 
 What's compelling about the Frequency-Adaptive Momentum approach is that it acknowledges this structure in the optimization process itself. Rather than treating all gradient dimensions equally, it recognizes that:
 - **Gradient Frequencies Matter:** The Fourier transform of gradient updates reveals patterns related to what the model is currently learning.
