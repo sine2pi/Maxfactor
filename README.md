@@ -1,4 +1,40 @@
+MaxFactor Optimizer Analysis
+Performance Summary
+MaxFactor shows interesting performance characteristics compared to other optimizers:
 
+Accuracy
+On MNIST (simple dataset):
+MaxFactor (96.17%) slightly underperforms compared to SGD (97.57%) and Adam variants (~97.2%)
+Trails the best performer by about 1.4%
+
+On CIFAR datasets (more complex):
+Significantly outperforms Adam/AdamW (by ~8-25%)
+Performs better as task complexity increases
+
+Convergence Speed
+Slower on simple tasks (4 epochs vs 0-1 for others on MNIST)
+Competitive on complex tasks (5-6 epochs, faster than SGD on CIFAR)
+Performs better as task complexity increases
+
+Computational Characteristics
+Time efficiency: 12-20% slower per epoch than other optimizers
+
+Memory efficiency:
+Uses ~25.1% less memory than Adam/AdamW
+
+
+Parameter update behavior:
+Makes more conservative updates (smallest parameter update norm)
+Updates 2-4× smaller than Adam/AdamW
+
+Practical Implications
+MaxFactor is be a memory-efficient optimizer that trades some initial convergence speed for better performance on complex tasks. It would be particularly valuable for:
+
+Memory-constrained environments
+Complex datasets where Adam/AdamW tend to underperform
+Models where conservative parameter updates may prevent overfitting
+
+Its balance between SGD's memory efficiency and adaptive optimizers' performance on complex tasks makes it an interesting alternative worth considering
 
 MaxFactor core is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for transformer models. Its main contribution is the effective combination and tuning of these techniques rather than introducing fundamentally new algorithms.
 
