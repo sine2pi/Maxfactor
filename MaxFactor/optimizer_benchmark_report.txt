@@ -1,0 +1,125 @@
+Optimizer Benchmark Summary
+=========================
+
+Dataset: cnn_mnist
+-----------------
+Final Test Accuracy:
+  SGD: 97.57%
+  Adam: 97.23%
+  AdamW: 97.20%
+  MaxFactor: 96.17%
+
+Convergence Speed (epochs to 90% of final accuracy):
+  SGD: 1 epochs
+  Adam: 0 epochs
+  AdamW: 0 epochs
+  MaxFactor: 4 epochs
+
+Average Time per Epoch:
+  SGD: 1.14s
+  Adam: 1.17s
+  AdamW: 1.17s
+  MaxFactor: 1.42s
+
+Average Parameter Update Norm:
+  SGD: 0.2764
+  Adam: 0.5658
+  AdamW: 0.5640
+  MaxFactor: 0.2420
+
+
+Dataset: cnn_cifar
+-----------------
+Final Test Accuracy:
+  SGD: 54.17%
+  Adam: 21.43%
+  AdamW: 21.47%
+  MaxFactor: 46.50%
+
+Convergence Speed (epochs to 90% of final accuracy):
+  SGD: 6 epochs
+  Adam: 3 epochs
+  AdamW: 3 epochs
+  MaxFactor: 5 epochs
+
+Average Time per Epoch:
+  SGD: 1.89s
+  Adam: 1.91s
+  AdamW: 1.89s
+  MaxFactor: 2.13s
+
+Average Parameter Update Norm:
+  SGD: 0.3957
+  Adam: 0.3934
+  AdamW: 0.3926
+  MaxFactor: 0.1698
+
+
+Dataset: convnet_cifar
+-----------------
+Final Test Accuracy:
+  SGD: 48.37%
+  Adam: 32.13%
+  AdamW: 32.30%
+  MaxFactor: 40.83%
+
+Convergence Speed (epochs to 90% of final accuracy):
+  SGD: 7 epochs
+  Adam: 6 epochs
+  AdamW: 6 epochs
+  MaxFactor: 6 epochs
+
+Average Time per Epoch:
+  SGD: 1.97s
+  Adam: 1.98s
+  AdamW: 1.98s
+  MaxFactor: 2.34s
+
+Average Parameter Update Norm:
+  SGD: 0.2950
+  Adam: 0.8404
+  AdamW: 0.8322
+  MaxFactor: 0.2240
+
+
+
+Memory Usage Comparison
+=====================
+
+Feature Dimension: 100
+--------------------------
+  SGD: 26.50 MB
+  Adam: 35.34 MB
+  AdamW: 35.34 MB
+  MaxFactor: 26.53 MB
+
+Feature Dimension: 200
+--------------------------
+  SGD: 29.60 MB
+  Adam: 39.21 MB
+  AdamW: 39.21 MB
+  MaxFactor: 29.62 MB
+
+Feature Dimension: 400
+--------------------------
+  SGD: 34.28 MB
+  Adam: 46.34 MB
+  AdamW: 46.34 MB
+  MaxFactor: 34.31 MB
+
+Feature Dimension: 800
+--------------------------
+  SGD: 42.91 MB
+  Adam: 57.21 MB
+  AdamW: 57.21 MB
+  MaxFactor: 42.94 MB
+
+Feature Dimension: 1600
+--------------------------
+  SGD: 61.66 MB
+  Adam: 82.21 MB
+  AdamW: 82.21 MB
+  MaxFactor: 61.69 MB
+
+MaxFactor uses 25.1% less memory than AdamW on average.
+
