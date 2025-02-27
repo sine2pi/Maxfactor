@@ -1,17 +1,20 @@
-# MaxFactor Optimizer Analysis
+## Core Concept
 
-## Performance Summary
+MaxFactor core is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for encoder-decoder ASR/NLP transformer models. It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models and its particular combination of approaches addresses practical challenges in training speech LLMs.
+
+### Performance Summary
 
 ### Accuracy
 
 **On MNIST (simple dataset):**
-- MaxFactor (96.17%) slightly underperforms compared to SGD (97.57%) and Adam variants (~97.2%)
+- MaxFactor (96.03%) slightly underperforms compared to SGD (97.57%) and Adam variants (~97.2%)
 - Trails the best performer by about 1.4%
 
 **On CIFAR datasets (more complex):**
-- Significantly outperforms Adam/AdamW (by ~8-25%)
+- On CNN-CIFAR: MaxFactor (46.00%) significantly outperforms Adam/AdamW (~21.45%) but trails SGD (54.17%)
+- On ConvNet-CIFAR: MaxFactor (40.10%) outperforms Adam/AdamW (~32.2%) but trails SGD (48.37%)
 - Performs better as task complexity increases
-
+- 
 ### Convergence Speed
 
 - Slower on simple tasks (4 epochs vs 0-1 for others on MNIST)
@@ -20,54 +23,27 @@
 
 ### Computational Characteristics
 
-**Time efficiency:** 12-20% slower per epoch than other optimizers
+**Time efficiency:** 
+- Surprisingly fastest per epoch on MNIST (1.81s vs 2.07-2.46s for others)
+- 20-30% slower per epoch than other optimizers on CIFAR
 
 **Memory efficiency:**
-- Uses ~25.1% less memory than Adam/AdamW
+- Nearly identical to SGD: MaxFactor's memory footprint matches SGD almost exactly across all feature dimensions (difference < 0.1%)
+- Substantial memory savings: Uses ~25% less memory than Adam/AdamW consistently across all model sizes
+- Scaling pattern: Memory advantage remains constant as feature dimensions increase (100 to 1600)
 
 **Parameter update behavior:**
-- Makes more conservative updates (smallest parameter update norm)
-- Updates 2-4× smaller than Adam/AdamW
+- Conservative updates (0.2457 norm) similar to SGD (0.2764) on MNIST
+- Much more conservative updates (0.17-0.22 norm vs 0.39-0.83 for others) on CIFAR
 
 ## Practical Implications
 
 MaxFactor is a memory-efficient optimizer that trades some initial convergence speed for better performance on complex tasks. It would be particularly valuable for:
 - Memory-constrained environments
-- Complex datasets where Adam/AdamW tend to underperform
-- Models where conservative parameter updates may prevent overfitting
+- Complex datasets where Adam/AdamW tend to underperform, such as audio and text, or any dataset used in training a multimodal modal.
+- Models where conservative parameter updates may prevent overfitting. Useful for ASR.
 
 Its balance between SGD's memory efficiency and adaptive optimizers' performance on complex tasks makes it an interesting alternative worth considering.
-
-## Core Concept
-
-MaxFactor core is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for transformer models. Its main contribution is the effective combination and tuning of these techniques rather than introducing fundamentally new algorithms.
-
-It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. While not introducing fundamentally new techniques as of yet, its particular combination of approaches addresses practical challenges in training large speech models like Whisper.
-
-The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. For whatever reason, every AI model I've tried to use for editing breaks this optimizer. (just an interesting side note)
-
-The FAM is experimental (at the bottom) and is unique to Maxfactor but it doesn't work yet.
-
-## Frequency-Adaptive Momentum (FAM)
-
-### Core Concept
-
-- Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms; it's transformed and preserved in ways that the model's parameters adapt to capture.
-- The Chain of Frequency Information: Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates.
-  This isn't just a theoretical connection - it's empirically observable in how transformer-based speech models learn:
-  - Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram.
-  - Attention heads specialize in tracking particular acoustic patterns across time.
-  - The model inherently develops a hierarchical representation from acoustic features to phonetic units to words.
-- The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
-
-### Why This Optimizer Makes Sense
-
-What's compelling about the Frequency-Adaptive Momentum approach is that it acknowledges this structure in the optimization process itself. Rather than treating all gradient dimensions equally, it recognizes that:
-- **Gradient Frequencies Matter:** The Fourier transform of gradient updates reveals patterns related to what the model is currently learning.
-- **Different Parameters Process Different Bands:** Just as our ears have frequency-specific receptors, different parts of the model specialize in different acoustic frequencies.
-- **Temporal Structure in Learning:** Speech learning happens in stages - first basic acoustics, then phonetic patterns, then linguistic structures.
-
-By applying different momentum factors to different frequency bands in parameter space, we're essentially giving the optimizer information about the audio domain that it wouldn't otherwise have.
 
 ## MaxFactor Family Tree
 
@@ -101,374 +77,121 @@ Gradient Clipping
 
 MaxFactor
 └── Combines all above features with a couple unique twists. (and FAM)
+```
 
+## Frequency-Adaptive Momentum (FAM)
+(wip)
 
+### Core Concept
 
-MaxFactor Optimizer Analysis
-Performance Summary
-MaxFactor shows interesting performance characteristics compared to other optimizers:
-
-Accuracy
-On MNIST (simple dataset):
-MaxFactor (96.17%) slightly underperforms compared to SGD (97.57%) and Adam variants (~97.2%)
-Trails the best performer by about 1.4%
-
-On CIFAR datasets (more complex):
-Significantly outperforms Adam/AdamW (by ~8-25%)
-Performs better as task complexity increases
-
-Convergence Speed
-Slower on simple tasks (4 epochs vs 0-1 for others on MNIST)
-Competitive on complex tasks (5-6 epochs, faster than SGD on CIFAR)
-Performs better as task complexity increases
-
-Computational Characteristics
-Time efficiency: 12-20% slower per epoch than other optimizers
-
-Memory efficiency:
-Uses ~25.1% less memory than Adam/AdamW
-
-
-Parameter update behavior:
-Makes more conservative updates (smallest parameter update norm)
-Updates 2-4× smaller than Adam/AdamW
-
-Practical Implications
-MaxFactor is be a memory-efficient optimizer that trades some initial convergence speed for better performance on complex tasks. It would be particularly valuable for:
-
-Memory-constrained environments
-Complex datasets where Adam/AdamW tend to underperform
-Models where conservative parameter updates may prevent overfitting
-
-Its balance between SGD's memory efficiency and adaptive optimizers' performance on complex tasks makes it an interesting alternative worth considering
-
-MaxFactor core is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for transformer models. Its main contribution is the effective combination and tuning of these techniques rather than introducing fundamentally new algorithms.
-
-It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. While not introducing fundamentally new techniques as of yet, its particular combination of approaches addresses practical challenges in training large speech models like Whisper.
-
-The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. For whatever reason, every AI model I've tried to use for editing breaks this optimizer. (just an interesting side note)
-
-The FAM is experimental (at the bottom) and is unique to Maxfactor but it doesn't work yet.
-
-Frequency-Adaptive Momentum (FAM) -
-
- Core Concept:
- 
- - Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms - it's transformed and preserved in ways that the model's parameters adapt to capture.
-
+- Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms; it's transformed and preserved in ways that the model's parameters adapt to capture.
 - The Chain of Frequency Information: Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates.
   This isn't just a theoretical connection - it's empirically observable in how transformer-based speech models learn:
+  - Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram.
+  - Attention heads specialize in tracking particular acoustic patterns across time.
+  - The model inherently develops a hierarchical representation from acoustic features to phonetic units to words.
+- The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
-- Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram.
-- Attention heads specialize in tracking particular acoustic patterns across time.
-- The model inherently develops a hierarchical representation from acoustic features to phonetic units to words.
-
- - The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
-
-Why This Optimizer Makes Sense -
+### Why This Optimizer Makes Sense
 
 What's compelling about the Frequency-Adaptive Momentum approach is that it acknowledges this structure in the optimization process itself. Rather than treating all gradient dimensions equally, it recognizes that:
-
-- Gradient Frequencies Matter: The Fourier transform of gradient updates reveals patterns related to what the model is currently learning
-
-- Different Parameters Process Different Bands: Just as our ears have frequency-specific receptors, different parts of the model specialize in different acoustic frequencies
-
-- Temporal Structure in Learning: Speech learning happens in stages - first basic acoustics, then phonetic patterns, then linguistic structures
+- **Gradient Frequencies Matter:** The Fourier transform of gradient updates reveals patterns related to what the model is currently learning.
+- **Different Parameters Process Different Bands:** Just as our ears have frequency-specific receptors, different parts of the model specialize in different acoustic frequencies.
+- **Temporal Structure in Learning:** Speech learning happens in stages - first basic acoustics, then phonetic patterns, then linguistic structures.
 
 By applying different momentum factors to different frequency bands in parameter space, we're essentially giving the optimizer information about the audio domain that it wouldn't otherwise have.
 
-- Maxfactor family tree:
-
-Adam
-
-├── Adaptive learning rates 
-
-└── EMA of second moments
-
-Adafactor
-
-├── Factorized second moments
-
-└── Relative step sizing
-
-SignSGD
-
-└── Sign-based updates
-
-LAMB/LARS
-
-├── Layer-wise adaptivity
-
-└── Gradient normalization
-
-AdamW
-
-└── Decoupled weight decay
-
-Adamax
-
-└── Infinity normalization
-
-RMSprop
-
-└── Root mean squared gradient scaling
-
-Gradient Clipping
-
-└── Max norm constraints
-
-MaxFactor
-
-└── Combines all above features with a couple unique twists. (and fam)
-
-
-
-###   Key Features
-
-####  - **Adaptive Parameter-Specific Learning Rates**: Automatically adjusts learning rates based on parameter magnitudes and gradient statistics, eliminating the need for extensive learning rate tuning.
-
-####  - **Matrix Factorization for Memory Efficiency**: Uses a low-rank approximation for second moment matrices in high-dimensional parameters, reducing memory requirements by O(n) compared to Adam's O(n²) for large matrices.
-
-####  - **Sign-Based Updates with Magnitude Scaling**: Combines the stability of sign-based methods (like Sign-SGD) with adaptive magnitude scaling across dimensions, providing more consistent updates across varying gradient magnitudes.
-
-####  - **Dimension-Aware Normalization**: Applies different strategies for matrices versus vectors, respecting the structure of transformer components (attention matrices, embeddings, projections).
-
-#### - **Gradient Self-Stabilization**: Automatically normalizes updates to prevent exploding or vanishing gradients without requiring external gradient clipping.
-
-
 
 ```python
-class MaxFactor(torch.optim.Optimizer):
-    """
-    MaxFactor optimizer that combines adaptive learning rates with factorized second moments.
-    
-    Args:
-        params (iterable): Iterable of parameters to optimize
-        lr (float, optional): Maximum learning rate (default: 0.01)
-        beta2_decay (float, optional): Decay exponent for second moments (default: -0.8)
-        eps (tuple, optional): Small constants for numerical stability (default: (None, 1e-3))
-        d (float, optional): Scaling factor for updates (default: 1.0)
-        weight_decay (float, optional): Weight decay factor (default: 0.0)
-        gamma (float, optional): EMA factor for non-matrix parameters (default: 0.99)
-        eps_rms (float, optional): Small constant for RMS calculation (default: 1e-8)
-        maximize (bool, optional): Maximize the objective instead of minimizing (default: False)
-    """
-    def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, 
-                 weight_decay=0.0, gamma=0.99, eps_rms=1e-8, maximize=False,
-                 full_matrix=False, clip_threshold=1.0):
-        
-        if lr <= 0.0:
-            raise ValueError(f"Learning rate must be positive, got {lr}")
-            
-        # Store default eps for floating point precision if None
-        eps1, eps2 = eps
-        if eps1 is None:
-            eps1 = torch.finfo(torch.float32).eps
-            
-        defaults = dict(
-            lr=lr, 
-            beta2_decay=beta2_decay, 
-            eps=(eps1, eps2), 
-            d=d, 
-            weight_decay=weight_decay, 
-            gamma=gamma, 
-            eps_rms=eps_rms, 
-            maximize=maximize,
-            full_matrix=full_matrix,
-            clip_threshold=clip_threshold
-        )
-        super().__init__(params=params, defaults=defaults)
-        
-    def _get_lr(self, param_group, param_state):
-        """
-        Calculate adaptive learning rate based on parameter state.
-        
-        Args:
-            param_group: Parameter group containing optimization settings
-            param_state: State of the specific parameter
-            
-        Returns:
-            Calculated learning rate for the parameter
-        """
-        step = param_state["step"]
-        
-        # Calculate relative step size with better numerical stability
-        min_step = 1e-6 * step
-        rel_step_sz = min(min_step, 1.0 / (step.sqrt() + 1e-15))
-        
-        # Scale by parameter RMS or minimum value
-        param_scale = max(param_group["eps"][1], param_state.get("RMS", 1.0))
-        
-        # Apply learning rate cap from param_group
-        return min(param_group["lr"], param_scale * rel_step_sz)
 
-    @staticmethod
-    def _rms(tensor):
-        """
-        Calculate the root mean square of a tensor.
+# class MaxFactor(Optimizer):
+#     def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(None, 1e-3), d=1.0, 
+#                  weight_decay=0.0, gamma=0.99, eps_rms=1e-8, maximize=False):
         
-        Args:
-            tensor: Input tensor
-            
-        Returns:
-            RMS value of tensor
-        """
-        # Handle empty tensor case
-        if tensor.numel() == 0:
-            return torch.tensor(0.0, device=tensor.device)
-            
-        return tensor.norm() / (tensor.numel() ** 0.5 + 1e-12)
+#         defaults = dict(lr=lr, beta2_decay=beta2_decay, eps=eps, d=d, weight_decay=weight_decay, 
+#                         gamma=gamma, eps_rms=eps_rms, maximize=maximize)
+#         super().__init__(params=params, defaults=defaults)
 
-    @torch.no_grad()
-    def step(self, closure=None):
-        """
-        Perform a single optimization step.
-        
-        Args:
-            closure (callable, optional): Function that reevaluates the model and returns loss
-            
-        Returns:
-            Loss value if closure is provided, else None
-        """
-        loss = None
-        if closure is not None:
-            with torch.enable_grad():
-                loss = closure()
+#     def _get_lr(self, param_group, param_state):
+#         step = param_state["step"]
+#         min_step = 1e-6 * step
+#         rel_step_sz = min(min_step, 1.0 / step.sqrt())
+#         param_scale = max(param_group["eps"][1], param_state["RMS"])
+#         return param_scale * rel_step_sz
 
-        for group in self.param_groups:
-            params_with_grad = []
-            grads = []
-            row_vars = []
-            col_vars = []
-            v = []
-            state_steps = []
-            
-            eps1, eps2 = group["eps"]
-            
-            # Collect parameters, gradients and states
-            for p in group["params"]:
-                if p.grad is None:
-                    continue
-                    
-                # Convert gradient to float if needed
-                grad = p.grad
-                if grad.dtype in {torch.float16, torch.bfloat16}:
-                    grad = grad.float()
+#     @staticmethod
+#     def _rms(tensor):
+#         return tensor.norm() / (tensor.numel() ** 0.5)
 
-                # Initialize state if needed
-                state = self.state[p]
-                if len(state) == 0:
-                    state["step"] = torch.tensor(0.0, dtype=torch.float32)
-                    
-                    # For matrix parameters, initialize row and column variances
-                    if p.dim() > 1 and not group["full_matrix"]:
-                        row_shape = list(p.shape)
-                        row_shape[-1] = 1
-                        state["row_var"] = torch.zeros(row_shape, dtype=torch.float32, device=p.device)
-                        
-                        col_shape = list(p.shape)
-                        col_shape[-2] = 1
-                        state["col_var"] = torch.zeros(col_shape, dtype=torch.float32, device=p.device)
-                    
-                    # Initialize momentum
-                    state["v"] = torch.zeros_like(p, memory_format=torch.preserve_format)
-                    
-                    # Store initial RMS of parameter for scaling
-                    state["RMS"] = self._rms(p).item()
+#     @torch.no_grad()
+#     def step(self, closure=None):
+#         loss = None
+#         if closure is not None:
+#             with torch.enable_grad():
+#                 loss = closure()
 
-                # Collect states
-                row_vars.append(state.get("row_var", None))
-                col_vars.append(state.get("col_var", None))
-                v.append(state["v"])
-                state_steps.append(state["step"])
-                params_with_grad.append(p)
-                grads.append(grad)
+#         for group in self.param_groups:
+#             params_with_grad, grads, row_vars, col_vars, v, state_steps = [], [], [], [], [], []
+#             eps1, eps2 = group["eps"]
+#             for p in group["params"]:
+#                 if p.grad is None:
+#                     continue
+#                 grad = p.grad
+#                 if grad.dtype in {torch.float16, torch.bfloat16}:
+#                     grad = grad.float()
 
-            # Process each parameter
-            for i, param in enumerate(params_with_grad):
-                grad = grads[i]
-                
-                if group["maximize"]:
-                    grad = -grad
-                    
-                step_t = state_steps[i]
-                row_var = row_vars[i]
-                col_var = col_vars[i]
-                vi = v[i]
-                
-                # Increment step count
-                step_t += 1
-                step_float = step_t.item()
-                
-                # Calculate beta2 decay based on step
-                one_minus_beta2_t = min(0.999, step_float ** group["beta2_decay"])
-                
-                # Calculate learning rate
-                state = self.state[param]
-                state["RMS"] = self._rms(param).item()  # Update RMS
-                rho_t = self._get_lr(group, state)
-                
-                # Apply weight decay
-                if group["weight_decay"] != 0:
-                    param.mul_(1 - rho_t * group["weight_decay"])
+#                 state = self.state[p]
+#                 if len(state) == 0:
+#                     state["step"] = torch.tensor(0.0, dtype=torch.float32)
+#                     if p.grad.dim() > 1:
+#                         row_shape, col_shape = list(p.grad.shape), list(p.grad.shape)
+#                         row_shape[-1], col_shape[-2] = 1, 1
+#                         state["row_var"], state["col_var"] = p.grad.new_zeros(row_shape), p.grad.new_zeros(col_shape)
+#                     state["v"] = torch.zeros_like(p, memory_format=torch.preserve_format)
 
-                # Calculate variance estimate based on parameter dimensionality
-                if param.dim() > 1 and not group["full_matrix"]:
-                    # Matrix parameter - use factorized second moments
-                    row_mean = torch.norm(grad, dim=-1, keepdim=True).square_()
-                    row_mean.div_(grad.size(-1) + 1e-12)
-                    row_var.lerp_(row_mean, one_minus_beta2_t)
-                    
-                    col_mean = torch.norm(grad, dim=-2, keepdim=True).square_()
-                    col_mean.div_(grad.size(-2) + 1e-12)
-                    col_var.lerp_(col_mean, one_minus_beta2_t)
-                    
-                    # Calculate variance estimate as outer product
-                    var_estimate = row_var @ col_var
-                    
-                    # Normalize by maximum row variance for better scaling
-                    max_row_var = row_var.max(dim=-2, keepdim=True)[0]  
-                    var_estimate.div_(max_row_var.clamp_(min=eps1))
-                else:
-                    # Vector/scalar parameter - use exponential moving average
-                    vi.mul_(group["gamma"]).add_(grad.square_(), alpha=1 - group["gamma"])
-                    var_estimate = vi
-                
-                # Calculate update with variance scaling
-                update = var_estimate.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
-                
-                # Normalize the update for more stable training
-                inf_norm = torch.norm(update, float('inf'))
-                if inf_norm > 0:
-                    update.div_(inf_norm.clamp_(min=eps1))
-                
-                # Apply update scaling based on L2 norm
-                if group.get("clip_threshold", 0) > 0:
-                    # Apply gradient clipping if threshold is set
-                    torch.nn.utils.clip_grad_norm_(
-                        [update], 
-                        max_norm=group["clip_threshold"]
-                    )
-                
-                # Calculate denominator for update scaling
-                l2_norm = update.norm(2).item()
-                denom = max(1.0, l2_norm / ((update.numel() ** 0.5) * group["d"]))
-                
-                # Apply sign-based update with magnitude scaling across dimensions
-                if param.dim() > 1:
-                    # For matrices, scale by max value in each row for stability
-                    param.add_(
-                        update.sign() * update.abs().max(dim=-1, keepdim=True)[0], 
-                        alpha=-rho_t / denom
-                    )
-                else:
-                    # For vectors, apply direct update
-                    param.add_(update, alpha=-rho_t / denom)
-                    
-                # Save step for next iteration
-                state["step"] = step_t
+#                 row_vars.append(state.get("row_var", None))
+#                 col_vars.append(state.get("col_var", None))
+#                 v.append(state["v"])
+#                 state_steps.append(state["step"])
+#                 params_with_grad.append(p)
+#                 grads.append(grad)
 
-        return loss
+#             for i, param in enumerate(params_with_grad):
+#                 grad = grads[i]
+
+#                 if group["maximize"]:
+#                     grad = -grad
+#                 step_t, row_var, col_var, vi = state_steps[i], row_vars[i], col_vars[i], v[i]
+
+#                 if eps1 is None:
+#                     eps1 = torch.finfo(param.dtype).eps
+                    
+#                 step_t += 1
+#                 step_float = step_t.item()
+#                 one_minus_beta2_t = step_float ** group["beta2_decay"]
+#                 rho_t = min(group["lr"], 1 / (step_float ** 0.5))
+#                 alpha = max(eps2, param.norm(2).item() / (param.numel() ** 0.5)) * rho_t
+
+#                 if group["weight_decay"]!= 0:
+#                     param.mul_(1 - group["lr"] * group["weight_decay"])
+
+#                 if grad.dim() > 1:
+#                     row_mean = torch.norm(grad, dim=-1, keepdim=True).square_().div_(grad.size(-1) + 1e-8)
+#                     row_var.lerp_(row_mean, one_minus_beta2_t)
+#                     col_mean = torch.norm(grad, dim=-2, keepdim=True).square_().div_(grad.size(-2) + 1e-8)
+#                     col_var.lerp_(col_mean, one_minus_beta2_t)
+#                     var_estimate = row_var @ col_var
+#                     max_row_var = row_var.max(dim=-2, keepdim=True)[0]  
+#                     var_estimate.div_(max_row_var.clamp_(min=eps1))
+#                 else:
+#                     vi.mul_(group["gamma"]).add_(grad ** 2, alpha=1 - group["gamma"])
+#                     var_estimate = vi
+
+#                 update = var_estimate.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
+#                 update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
+#                 denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
+#                 param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
+#         return loss
     
 
 optimizer = MaxFactor(
@@ -478,12 +201,12 @@ optimizer = MaxFactor(
     eps=(1e-10, 1e-4),  
     d=1.0,
     weight_decay=0.01,  
-    gamma=0.98,         
+    gamma=0.99,         
     eps_rms=1e-8,
     maximize=False,
-    clip_threshold=1.0 
 )
 
+# optional:
 # Create scheduler with warmup
 scheduler = AdaptiveSchedule(
     optimizer=optimizer,
@@ -499,7 +222,7 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
     eta_min=1e-5,
     last_epoch=-1  
 )
-### optional
+### also optional
 
 class AdaptiveSchedule(torch.optim.lr_scheduler.LambdaLR):
     """
