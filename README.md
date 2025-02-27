@@ -288,7 +288,7 @@ class AdaptiveSchedule(torch.optim.lr_scheduler.LambdaLR):
             return super().get_lr()
         
 
-#### very experimental
+#### experimental 
 
 def frequency_adaptive_momentum(grad, state, alpha=0.9, beta=0.999):
     """
