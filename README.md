@@ -1,110 +1,3 @@
-## MaxFactor - 
-(not ready)
-
-MaxFactor is best described as a thoughtful integration of existing optimization techniques, with specific implementation choices tailored for encoder-decoder ASR/NLP transformer models. It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models and its particular combination of approaches addresses practical challenges in training speech LLMs.
-
-### Performance Summary
-
-### Accuracy
-
-**On MNIST (simple dataset):**
-- MaxFactor (96.03%) slightly underperforms compared to SGD (97.57%) and Adam variants (~97.2%)
-- Trails the best performer by about 1.4%
-
-**On CIFAR datasets (more complex):**
-- On CNN-CIFAR: MaxFactor (46.00%) significantly outperforms Adam/AdamW (~21.45%) but trails SGD (54.17%)
-- On ConvNet-CIFAR: MaxFactor (40.10%) outperforms Adam/AdamW (~32.2%) but trails SGD (48.37%)
-- Performs better as task complexity increases
-  
-### Convergence Speed
-
-- Slower on simple tasks (4 epochs vs 0-1 for others on MNIST)
-- Competitive on complex tasks (5-6 epochs, faster than SGD on CIFAR)
-- Performs better as task complexity increases
-
-### Computational Characteristics
-
-**Time efficiency:** 
-- Surprisingly fastest per epoch on MNIST (1.81s vs 2.07-2.46s for others)
-- 20-30% slower per epoch than other optimizers on CIFAR
-
-**Memory efficiency:**
-- Nearly identical to SGD: MaxFactor's memory footprint matches SGD almost exactly across all feature dimensions (difference < 0.1%)
-- Substantial memory savings: Uses ~25% less memory than Adam/AdamW consistently across all model sizes
-- Scaling pattern: Memory advantage remains constant as feature dimensions increase (100 to 1600)
-
-**Parameter update behavior:**
-- Conservative updates (0.2457 norm) similar to SGD (0.2764) on MNIST
-- Much more conservative updates (0.17-0.22 norm vs 0.39-0.83 for others) on CIFAR
-
-## Practical Implications
-
-MaxFactor is a memory-efficient optimizer that trades some initial convergence speed for better performance on complex tasks. It would be particularly valuable for:
-- Memory-constrained environments
-- Complex datasets where Adam/AdamW tend to underperform, such as audio with text or images, or any dataset used in training a multimodal model.
-- Models where conservative parameter updates may prevent overfitting. Useful for ASR.
-
-Its balance between SGD's memory efficiency and adaptive optimizers' performance on complex tasks makes it an interesting alternative worth considering.
-
-## MaxFactor Family Tree
-
-```
-Adam
-├── Adaptive learning rates 
-└── EMA of second moments
-
-Adafactor
-├── Factorized second moments
-└── Relative step sizing
-
-SignSGD
-└── Sign-based updates
-
-LAMB/LARS
-├── Layer-wise adaptivity
-└── Gradient normalization
-
-AdamW
-└── Decoupled weight decay
-
-Adamax
-└── Infinity normalization
-
-RMSprop
-└── Root mean squared gradient scaling
-
-Gradient Clipping
-└── Max norm constraints
-
-MaxFactor
-└── Combines all above features with a couple unique twists. (and FAM)
-```
-
-## Frequency-Adaptive Momentum (FAM)
-(wip)
-
-### Core Concept
-
-- Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms; it's transformed and preserved in ways that the model's parameters adapt to capture.
-- The Chain of Frequency Information: Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates.
-  This isn't just a theoretical connection - it's empirically observable in how transformer-based speech models learn:
-  - Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram.
-  - Attention heads specialize in tracking particular acoustic patterns across time.
-  - The model inherently develops a hierarchical representation from acoustic features to phonetic units to words.
-- The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
-
-### Why This Optimizer Makes Sense
-
-What's compelling about the Frequency-Adaptive Momentum approach is that it acknowledges this structure in the optimization process itself. Rather than treating all gradient dimensions equally, it recognizes that:
-- **Gradient Frequencies Matter:** The Fourier transform of gradient updates reveals patterns related to what the model is currently learning.
-- **Different Parameters Process Different Bands:** Just as our ears have frequency-specific receptors, different parts of the model specialize in different acoustic frequencies.
-- **Temporal Structure in Learning:** Speech learning happens in stages - first basic acoustics, then phonetic patterns, then linguistic structures.
-
-By applying different momentum factors to different frequency bands in parameter space, we're essentially giving the optimizer information about the audio domain that it wouldn't otherwise have.
-
-![memory_usage_comparison](https://github.com/user-attachments/assets/2f046c15-f2b5-41ee-86e5-a2da8e10ea18)
-![optimizer_benchmark_mnist](https://github.com/user-attachments/assets/b664f18b-cd2c-4af5-84c1-31f2ed9d6f37)
-![optimizer_benchmark_cifar10](https://github.com/user-attachments/assets/c0784226-cb51-442c-af9c-323ef8b24320)
 
 
 ```python
@@ -119,11 +12,11 @@ class MaxFactor(Optimizer):
         super().__init__(params=params, defaults=defaults)
 
     def _get_lr(self, param_group, param_state):
-        step = param_state["step"]
-        min_step = 1e-5 * step
-        rel_step_sz = min(min_step, 1.0 / step.sqrt())
-        param_scale = max(param_group["eps"][1], param_state["RMS"])
-        return param_scale * rel_step_sz
+            step = param_state["step"]
+            step_float = step.item()
+            decay_factor = min(1.0, 1.0 / (step_float ** 0.5  + 1e-8))
+            param_scale = max(param_group["eps"][1], param_state["RMS"])
+            return min(param_group["lr"], param_scale * decay_factor)
 
     @staticmethod
     def _rms(tensor):
@@ -174,11 +67,14 @@ class MaxFactor(Optimizer):
                     
                 step_t += 1
                 step_float = step_t.item()
+                
                 one_minus_beta2_t = step_float ** group["beta2_decay"]
+                state["RMS"] = self._rms(param).item()
+                adaptive_lr = self._get_lr(group, state)
                 rho_t = min(group["lr"], 1 / (step_float ** 0.5))
                 alpha = max(eps2, param.norm(2).item() / (param.numel() ** 0.5)) * rho_t
 
-                if group["weight_decay"]!= 0:
+                if group["weight_decay"] != 0:
                     param.mul_(1 - group["lr"] * group["weight_decay"])
 
                 if grad.dim() > 1:
@@ -193,12 +89,14 @@ class MaxFactor(Optimizer):
                     vi.mul_(group["gamma"]).add_(grad ** 2, alpha=1 - group["gamma"])
                     var_estimate = vi
 
+
+
                 update = var_estimate.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
                 update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
                 denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
-                param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
+                
+                param.add_(-adaptive_lr / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
         return loss
-    
     
 
 optimizer = MaxFactor(
