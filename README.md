@@ -121,7 +121,7 @@ class MaxFactor(torch.optim.Optimizer):
     """
     def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(1e-12, 1e-8), d=1.0, 
         weight_decay=0.0, gamma=0.99, max=False,
-        ull_matrix=False, clip=1.0):
+        full_matrix=False, clip=1.0):
         
         if lr <= 0.0:
             raise ValueError(f"Learning rate must be positive, got {lr}")
