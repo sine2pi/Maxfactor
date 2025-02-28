@@ -273,23 +273,18 @@ class MaxFactor(torch.optim.Optimizer):
 
         return loss
 
-# optional:
-# Create scheduler with warmup
-scheduler = AdaptiveSchedule(
-    optimizer=optimizer,
-    initial_lr=0.001,
-    warmup_steps=500,
-    decay_factor=0.1
-)
+# Use any scheduler you like such as:
 
-# Alternative: use cosine schedule
 scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
     optimizer=optimizer,
-    T_max=training_args.max_steps,
-    eta_min=1e-5,
+    T_max=max_steps,
+    eta_min=0.0,
     last_epoch=-1  
 )
-### also optional
+
+## Alternative : scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0) (hugging face trainer)
+
+## Alternative - this scheduler will effectively override the lr parameter in the optimizer
 
 class AdaptiveSchedule(torch.optim.lr_scheduler.LambdaLR):
     """
@@ -304,6 +299,7 @@ class AdaptiveSchedule(torch.optim.lr_scheduler.LambdaLR):
     def __init__(self, optimizer, initial_lr=0.0, warmup_steps=0, decay_factor=0.1):
         self.warmup_steps = warmup_steps
         self.decay_factor = decay_factor
+        self.initial_lr = initial_lr
         
         def lr_lambda(step):
             # Warmup phase
@@ -311,15 +307,7 @@ class AdaptiveSchedule(torch.optim.lr_scheduler.LambdaLR):
                 return initial_lr * (step / max(1, warmup_steps))
             return initial_lr
         
-        # Store parameters in optimizer groups
-        for group in optimizer.param_groups:
-            group["initial_lr"] = initial_lr
-            
         super().__init__(optimizer, lr_lambda)
-        
-        # Clean up for memory efficiency
-        for group in optimizer.param_groups:
-            del group["initial_lr"]
 
     def get_lr(self):
         """Calculate learning rate using optimizer's internal method"""
@@ -329,15 +317,20 @@ class AdaptiveSchedule(torch.optim.lr_scheduler.LambdaLR):
         if hasattr(opt, '_get_lr'):
             lrs = []
             for group_idx, group in enumerate(opt.param_groups):
+                # Find first parameter with gradient and state
                 for param in group["params"]:
-                    if param.grad is not None:
-                        lrs.append(opt._get_lr(group, opt.state[param]))
-                        break
-            
-            if len(lrs) == 0:
-                lrs = self.base_lrs
+                    if param.grad is not None and param in opt.state:
+                        param_state = opt.state[param]
+                        if "RMS" in param_state and "step" in param_state:
+                            lr = opt._get_lr(group, param_state)
+                            lrs.append(lr)
+                            break
                 
-            # Apply warmup/decay scaling
+                # If no parameter with state was found, use base_lr
+                if len(lrs) <= group_idx:
+                    lrs.append(self.base_lrs[group_idx])
+            
+            # Apply warmup scaling if in warmup phase
             step = self.last_epoch
             if step < self.warmup_steps:
                 warmup_factor = max(0.001, step / max(1, self.warmup_steps))
@@ -345,7 +338,6 @@ class AdaptiveSchedule(torch.optim.lr_scheduler.LambdaLR):
                 
             return lrs
         else:
-
             return super().get_lr()
         
 
