@@ -1,44 +1,9 @@
 
-MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. It combines proven optimization techniques from several established algorithms, with implementation details specifically tuned for transformer architectures used in speech recognition. 
+**MaxFactor: A Robust Foundation
 
-The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. Its particular combination of approaches addresses practical challenges in training large speech and multimodal llms. 
+MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. It combines proven optimization methods from several established algorithms with implementation details specifically fine-tuned for transformer architectures used in speech recognition.
 
-Why a new optimizer? The proposed architecture forms the basis for the innovative Frequency-Adaptive Momentum (FAM) approach, which seeks to harness the natural frequency structure of speech data within the optimization process. Each attribute has been chosen based on empirical evidence demonstrating their effectiveness for ASR (Automatic Speech Recognition) and NLP (Natural Language Processing) models and datasets. As our test data grows to encompass datasets and models that better reflect our target group, we expect it to significantly outperform other optimizers in its domain.
-
-#### MaxFactor Family Tree
-
-```
-Adam
-├── Adaptive learning rates 
-└── EMA of second moments
-
-Adafactor
-├── Factorized second moments
-└── Relative step sizing
-
-SignSGD
-└── Sign-based updates
-
-LAMB/LARS
-├── Layer-wise adaptivity
-└── Gradient normalization
-
-AdamW
-└── Decoupled weight decay
-
-Adamax
-└── Infinity normalization
-
-RMSprop
-└── Root mean squared gradient scaling
-
-Gradient Clipping
-└── Max norm constraints
-
-MaxFactor
-└── Combines all above features with a couple unique twists. (and FAM)
-```
-
+While MaxFactor is an effective optimizer, making practical engineering tradeoffs that work well empirically for speech recognition models, it's purpose is to serve as the backbone for the Frequency-Adaptive Momentum (FAM) approach. FAM aims to harness the natural frequency structure of speech data within the optimization process. Each attribute of MaxFactor (core) has been chosen based on empirical evidence demonstrating its effectiveness for ASR and NLP models and datasets. As our test data grows to encompass datasets and models that better reflect our target group, we expect MaxFactor to significantly outperform other optimizers in its domain.
 
 ### Key Advantages
 
@@ -71,34 +36,69 @@ MaxFactor is particularly valuable for:
 | ConvNet-CIFAR| 7   | 6    | 6     | 7         |
 
 ### Memory Usage (relative to AdamW)
+
 MaxFactor uses **25.1% less memory** than AdamW while maintaining comparable memory efficiency to SGD (difference <0.1%).
 
+---
 
+**Coming Soon: Frequency-Adaptive Momentum (FAM)**
 
+An experimental approach specifically designed for speech recognition tasks, FAM adapts momentum based on the frequency characteristics of gradient updates.
 
-
-Coming soon -
-Additionally, it will introduce Frequency-Adaptive Momentum (FAM), an experimental approach specifically designed for speech recognition tasks that adapts momentum based on the frequency characteristics of gradient updates.
 ### Frequency-Adaptive Momentum (FAM)
 
 #### Core Concept
 
-- Speech signals have inherent frequency structure, with different parts of the model responding to different frequency bands. The frequency structure of speech doesn't just disappear when converted to log-mel spectrograms; it's transformed and preserved in ways that the model's parameters adapt to capture.
+- Speech signals possess an inherent frequency structure, with different parts of the model responding to various frequency bands. This frequency structure remains preserved, albeit transformed, when converted to log-mel spectrograms, with model parameters adapting to capture this structure.
 - The Chain of Frequency Information: Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates.
-  This isn't just a theoretical connection - it's empirically observable in how transformer-based speech models learn:
-  - Lower encoder layers develop filters that respond to specific frequency bands in the mel spectrogram.
-  - Attention heads specialize in tracking particular acoustic patterns across time.
-  - The model inherently develops a hierarchical representation from acoustic features to phonetic units to words.
-- The idea is to try and integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
+- Empirical observations reveal that transformer-based speech models develop:
+  - Lower encoder layers with filters responsive to specific frequency bands in the mel spectrogram.
+  - Attention heads tracking particular acoustic patterns over time.
+  - A hierarchical representation from acoustic features to phonetic units to words.
+- FAM aims to integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
 
 #### Why This Optimizer Makes Sense
 
-What's compelling about the Frequency-Adaptive Momentum approach is that it acknowledges this structure in the optimization process itself. Rather than treating all gradient dimensions equally, it recognizes that:
-- **Gradient Frequencies Matter:** The Fourier transform of gradient updates reveals patterns related to what the model is currently learning.
-- **Different Parameters Process Different Bands:** Just as our ears have frequency-specific receptors, different parts of the model specialize in different acoustic frequencies.
-- **Temporal Structure in Learning:** Speech learning happens in stages - first basic acoustics, then phonetic patterns, then linguistic structures.
+FAM acknowledges the frequency structure within the optimization process itself, recognizing that:
+- **Gradient Frequencies Matter:** The Fourier transform of gradient updates reveals patterns linked to the model's current learning phase.
+- **Different Parameters Process Different Bands:** Similar to how our ears have frequency-specific receptors, different parts of the model specialize in various acoustic frequencies.
+- **Temporal Structure in Learning:** Speech learning progresses through stages - from basic acoustics to phonetic patterns to linguistic structures.
 
-By applying different momentum factors to different frequency bands in parameter space, we're essentially giving the optimizer information about the audio domain that it wouldn't otherwise have.
+By applying distinct momentum factors to different frequency bands in parameter space, FAM provides the optimizer with domain-specific audio information that it otherwise wouldn't have.
+
+---
+MaxFactor family tree:
+```
+Adam
+├── Adaptive learning rates 
+└── EMA of second moments
+
+Adafactor
+├── Factorized second moments
+└── Relative step sizing
+
+SignSGD
+└── Sign-based updates
+
+LAMB/LARS
+├── Layer-wise adaptivity
+└── Gradient normalization
+
+AdamW
+└── Decoupled weight decay
+
+Adamax
+└── Infinity normalization
+
+RMSprop
+└── Root mean squared gradient scaling
+
+Gradient Clipping
+└── Max norm constraints
+
+MaxFactor
+└── Combines all above features and eventually FAM 
+```
 
 
 ```python
