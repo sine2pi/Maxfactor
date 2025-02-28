@@ -3,7 +3,7 @@ MaxFactor is best described as a thoughtful integration of existing optimization
 
 The optimizer makes practical engineering tradeoffs that work well empirically for speech recognition models. Its particular combination of approaches addresses practical challenges in training large speech and multimodal llms. 
 
-Why another optimizer? The architecture will serve as the foundation for the experimental Frequency-Adaptive Momentum (FAM) approach, which aims to leverage the inherent frequency structure of speech data in the optimization process itself. Each characteristic was selected based on empirical evidence indicating that they work well for ASR/NLP models and datasets.
+Why a new optimizer? The proposed architecture forms the basis for the innovative Frequency-Adaptive Momentum (FAM) approach, which seeks to harness the natural frequency structure of speech data within the optimization process. Each attribute has been chosen based on empirical evidence demonstrating their effectiveness for ASR (Automatic Speech Recognition) and NLP (Natural Language Processing) models and datasets. As our test data grows to encompass datasets and models that better reflect our target group, we expect it to significantly outperform other optimizers in its domain.
 
 #### MaxFactor Family Tree
 
