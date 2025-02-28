@@ -1,21 +1,9 @@
-
-**MaxFactor: A Robust Foundation
-
 MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. It combines proven optimization methods from several established algorithms with implementation details specifically fine-tuned for transformer architectures used in speech recognition.
 
-While MaxFactor is an effective optimizer, making practical engineering tradeoffs that work well empirically for speech recognition models, it's purpose is to serve as the backbone for the Frequency-Adaptive Momentum (FAM) approach. FAM aims to harness the natural frequency structure of speech data within the optimization process. Each attribute of MaxFactor (core) has been chosen based on empirical evidence demonstrating its effectiveness for ASR and NLP models and datasets. As our test data grows to encompass datasets and models that better reflect our target group, we expect MaxFactor to significantly outperform other optimizers in its domain.
+Each optimizer attribute was chosen based on empirical evidence demonstrating its effectiveness for ASR and NLP models and datasets. On it's own it's an effective optimizer, making practical engineering tradeoffs that work well empirically for speech recognition models, but it's purpose, the reason for its existence, is to serve as the backbone for the Frequency-Adaptive Momentum (FAM) approach that I'm experimenting with. FAM aims to harness the natural frequency structure of speech data within the optimization process itself. It's a work in progress. 
 
-### Key Advantages
 
-- **Superior accuracy** on simple tasks (MNIST)
-- **Competitive accuracy** on complex tasks, significantly outperforming Adam/AdamW
-- **Faster convergence** than SGD on some datasets
-- **Memory efficiency** matching SGD, using ~25% less memory than Adam/AdamW
-- **Stable optimization** across different model architectures and datasets
-
-### When to Use MaxFactor
-
-MaxFactor is particularly valuable for:
+When MaxFactor might be a good alternative:
 - Memory-constrained environments
 - Complex datasets where Adam/AdamW underperform
 - Speech recognition and other audio processing tasks
