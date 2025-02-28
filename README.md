@@ -262,7 +262,9 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
     last_epoch=-1  
 )
 
-## Dummy scheduler for hugging face trainer : scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)        
+## Dummy scheduler for hugging face trainer :
+
+scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)        
 
 #### experimental 
 
