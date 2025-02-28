@@ -1,7 +1,6 @@
-MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. It combines proven optimization methods from several established algorithms with implementation details specifically fine-tuned for transformer architectures used in speech recognition.
+MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. 
 
-Each optimizer attribute was chosen based on empirical evidence demonstrating its effectiveness for ASR and NLP models and datasets. On it's own it's an effective optimizer, making practical engineering tradeoffs that work well empirically for speech recognition models, but it's purpose, the reason for its existence, is to serve as the backbone for the Frequency-Adaptive Momentum (FAM) approach that I'm experimenting with. FAM aims to harness the natural frequency structure of speech data within the optimization process itself. It's a work in progress. 
-
+It combines proven optimization methods from several established algorithms with implementation details specifically fine-tuned for transformer architectures used in speech recognition.
 
 When MaxFactor might be a good alternative:
 - Memory-constrained environments
@@ -23,9 +22,11 @@ When MaxFactor might be a good alternative:
 | CNN-CIFAR    | 6   | 3    | 3     | 5         |
 | ConvNet-CIFAR| 7   | 6    | 6     | 7         |
 
-### Memory Usage (relative to AdamW)
+Memory Usage (relative to AdamW)
 
 MaxFactor uses **25.1% less memory** than AdamW while maintaining comparable memory efficiency to SGD (difference <0.1%).
+
+Each optimizer attribute was chosen based on empirical evidence demonstrating its effectiveness for ASR and NLP models and datasets. On it's own it's an effective optimizer, making practical engineering tradeoffs that work well empirically for speech recognition models, but it's purpose will be to serve as the backbone for the Frequency-Adaptive Momentum (FAM) approach that I'm experimenting with. FAM aims to harness the natural frequency structure of speech data within the optimization process itself. It's a work in progress. 
 
 ---
 
