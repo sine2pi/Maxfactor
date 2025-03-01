@@ -247,6 +247,9 @@ scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lambda _: 1.0)
 
 #### experimental 
 
+
+
+
 def frequency_adaptive_momentum(grad, state, alpha=0.9, beta=0.999):
     """
     Apply frequency-adaptive momentum to gradients.
@@ -403,6 +406,189 @@ def step(self, closure=None):
                 alpha=self.fam_alpha,
                 beta=self.fam_beta
             )
+
+
+## rough idea
+
+import torch
+from torch.optim.optimizer import Optimizer
+
+
+class FAMOptimizer(torch.optim.Optimizer):
+    """
+    Frequency-Adaptive Momentum (FAM) optimizer
+    
+    Applies momentum with different factors based on frequency characteristics of gradients,
+    particularly useful for speech recognition models.
+    
+    Args:
+        params (iterable): Iterable of parameters to optimize
+        lr (float, optional): Learning rate (default: 1e-3)
+        alpha (float, optional): Momentum factor (default: 0.9)
+        beta (float, optional): Frequency history decay factor (default: 0.99)
+        eps (float, optional): Term for numerical stability (default: 1e-8)
+        weight_decay (float, optional): Weight decay factor (default: 0)
+        n_bands (int, optional): Number of frequency bands to analyze (default: 8)
+        fam_start_step (int, optional): Step to start applying FAM (default: 100)
+        layer_boost (bool, optional): Whether to apply layer-specific boosts (default: True)
+        min_size (int, optional): Minimum parameter size to apply FAM (default: 256)
+        debug (bool, optional): Whether to collect debug information (default: False)
+    """
+    def __init__(self, params, lr=1e-3, alpha=0.9, beta=0.99, eps=1e-8,
+                 weight_decay=0, n_bands=8, fam_start_step=100,
+                 layer_boost=True, min_size=256, debug=False):
+        defaults = dict(lr=lr, alpha=alpha, beta=beta, eps=eps,
+                       weight_decay=weight_decay, n_bands=n_bands,
+                       fam_start_step=fam_start_step, 
+                       layer_boost=layer_boost, min_size=min_size)
+        self.debug = debug
+        self.debug_info = {} if debug else None
+        super(FAMOptimizer, self).__init__(params, defaults)
         
+        print(f"FAM Optimizer initialized with:")
+        print(f"  lr={lr}, alpha={alpha}, beta={beta}, n_bands={n_bands}")
+        print(f"  fam_start_step={fam_start_step}, min_size={min_size}")
+    
+    @torch.no_grad()
+    def step(self, closure=None):
+        """Perform a single optimization step."""
+        loss = None
+        if closure is not None:
+            with torch.enable_grad():
+                loss = closure()
+        
+        for group in self.param_groups:
+            for p_idx, p in enumerate(group['params']):
+                if p.grad is None:
+                    continue
+                
+                grad = p.grad
+                if grad.is_sparse:
+                    raise RuntimeError('FAMOptimizer does not support sparse gradients')
+                
+                state = self.state[p]
+                
+                if len(state) == 0:
+                    state['step'] = 0
+                    state['exp_avg'] = torch.zeros_like(p)
+                    state['freq_history'] = {}
+                    state['param_name'] = f"param_{p_idx}"
+                
+                state['step'] += 1
+                
+                if group['weight_decay'] != 0:
+                    grad = grad.add(p, alpha=group['weight_decay'])
+                
+                exp_avg = state['exp_avg']
+                alpha = group['alpha']
+                beta = group['beta']
+                lr = group['lr']
+                n_bands = group['n_bands']
+                
+                should_apply_fam = (
+                    state['step'] > group['fam_start_step'] and
+                    p.numel() > group['min_size']
+                )
+                
+                if should_apply_fam:
+                    try:
+                        if p.numel() > 10000:
+                            if p.dim() > 1:
+                                row_indices = torch.randperm(p.size(0))[:min(p.size(0), 64)]
+                                col_indices = torch.randperm(p.size(1))[:min(p.size(1), 64)]
+                                grad_sample = grad[row_indices][:, col_indices].flatten()
+                            else:
+                                sample_idx = torch.randperm(p.numel())[:1000]
+                                grad_sample = grad.flatten()[sample_idx]
+                        else:
+                            grad_sample = grad.flatten()
+                        
+                        freq_repr = torch.fft.rfft(grad_sample.float())
+                        freq_power = torch.abs(freq_repr)
+                        
+                        if freq_power.sum() > 0:
+                            freq_power = freq_power / (freq_power.sum() + group['eps'])
+                        
+                        band_size = freq_power.shape[0] // n_bands
+                        if band_size > 0:
+                            band_powers = []
+                            for i in range(n_bands):
+                                start_idx = i * band_size
+                                end_idx = min((i+1) * band_size, freq_power.shape[0])
+                                if start_idx < end_idx:
+                                    band_power = freq_power[start_idx:end_idx].sum().item()
+                                    band_powers.append(band_power)
+                                else:
+                                    band_powers.append(0.0)
+                            
+                            for i, power in enumerate(band_powers):
+                                band_key = f'band_{i}'
+                                if band_key not in state['freq_history']:
+                                    state['freq_history'][band_key] = power
+                                else:
+                                    state['freq_history'][band_key] = (
+                                        beta * state['freq_history'][band_key] +
+                                        (1-beta) * power
+                                    )
+                            
+                            adaptivity = torch.ones_like(grad)
+                            
+                            effective_alpha = alpha
+                            
+                            high_freq_activity = sum(state['freq_history'].get(f'band_{i}', 0) 
+                                                    for i in range(n_bands//2, n_bands))
+                            
+                            if high_freq_activity > 0.3:
+                                effective_alpha = min(0.95, alpha + 0.05)
+                            
+                            band_values = [state['freq_history'].get(f'band_{i}', 0) 
+                                          for i in range(n_bands)]
+                            max_band = max(range(n_bands), key=lambda i: band_values[i])
+                            
+                            if group['layer_boost']:
+                                if p.dim() > 1:
+                                    row_factor = 1.0
+                                    col_factor = 1.0
+                                    
+                                    if max_band < n_bands // 3:
+                                        effective_alpha *= 0.95
+                                    
+                                    elif max_band < 2 * n_bands // 3:
+                                        pass
+                                    
+                                    else:
+                                        effective_alpha = min(0.98, effective_alpha * 1.05)
+                            
+                            if self.debug:
+                                param_name = state['param_name']
+                                if param_name not in self.debug_info:
+                                    self.debug_info[param_name] = {'steps': [], 'bands': []}
+                                
+                                if state['step'] % 10 == 0:
+                                    self.debug_info[param_name]['steps'].append(state['step'])
+                                    self.debug_info[param_name]['bands'].append(band_values)
+                            
+                            exp_avg.mul_(effective_alpha).add_(grad * adaptivity, alpha=1-effective_alpha)
+                        else:
+                            exp_avg.mul_(alpha).add_(grad, alpha=1-alpha)
+                    except Exception as e:
+                        print(f"Error in FAM processing: {e}")
+                        exp_avg.mul_(alpha).add_(grad, alpha=1-alpha)
+                else:
+                    exp_avg.mul_(alpha).add_(grad, alpha=1-alpha)
+                
+                p.add_(exp_avg, alpha=-lr)
+        
+        return loss
+    
+    optimizer = FAMOptimizer(
+        model.parameters(),
+        lr=0.001,
+        alpha=0.9,
+        beta=0.99,
+        n_bands=8,
+        fam_start_step=10,
+        debug=True
+    )
 
 ```
