@@ -202,10 +202,7 @@ class MaxFactor(torch.optim.Optimizer):
         return loss
     
 
-#### experimental 
-
-
-
+#### experimental mockup
 
 def frequency_adaptive_momentum(grad, state, alpha=0.9, beta=0.999):
     """
