@@ -61,7 +61,6 @@ FAM acknowledges the frequency structure within the optimization process itself,
 
 By applying distinct momentum factors to different frequency bands in parameter space, FAM provides the optimizer with domain-specific audio information that it otherwise wouldn't have.
 
-## internal lr adjustment removed for now
 ---
 MaxFactor family tree:
 ```
