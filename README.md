@@ -1,34 +1,38 @@
-in progress...
+# Characterizing MaxFactor Optimizer
 
-MaxFactor is best described as a thoughtful integration of existing optimization techniques with specific implementation choices tailored for encoder-decoder ASR transformer models. 
+MaxFactor can be characterized as a memory-efficient adaptive optimizer that combines several innovative techniques:
 
-It combines proven optimization methods from several established algorithms with implementation details specifically fine-tuned for transformer architectures used in speech recognition.
+1. **Factored Second Moments for Matrices**
+   - Like Adafactor, it uses row and column statistics rather than storing full matrices
+   - Significantly reduces memory requirements compared to Adam-style optimizers
 
-When MaxFactor might be a good alternative:
-- Memory-constrained environments
-- Complex datasets where Adam/AdamW underperform
-- Speech recognition and other audio processing tasks
-- Scenarios requiring a balance of accuracy and efficiency
+2. **Sign-Based Matrix Updates with Max-Pooling**
+   - For matrix parameters, takes sign of updates and scales by the maximum value along rows
+   - This unique approach bridges sign-based methods and adaptive learning
 
-### Accuracy
-| Dataset      | SGD    | Adam   | AdamW  | MaxFactor |
-|--------------|--------|--------|--------|-----------|
-| MNIST        | 97.57% | 97.23% | 97.20% | 97.67%    |
-| CNN-CIFAR    | 54.17% | 21.43% | 21.47% | 51.43%    |
-| ConvNet-CIFAR| 48.37% | 32.13% | 32.30% | 46.30%    |
+3. **Dual Normalization Strategy**
+   - RMS-based clipping controls overall update magnitude
+   - Optional infinity norm normalization ensures balanced updates across dimensions
 
-### Convergence Speed (epochs to 90% of final accuracy)
-| Dataset      | SGD | Adam | AdamW | MaxFactor |
-|--------------|-----|------|-------|-----------|
-| MNIST        | 1   | 0    | 0     | 1         |
-| CNN-CIFAR    | 6   | 3    | 3     | 5         |
-| ConvNet-CIFAR| 7   | 6    | 6     | 7         |
+4. **Adaptive Learning Rate Scheduling**
+   - Incorporates automatic learning rate decay based on step count
+   - Parameter-specific scaling based on RMS values
 
-Memory Usage (relative to AdamW)
+## Technical Strengths
 
-MaxFactor uses **25.1% less memory** than AdamW while maintaining comparable memory efficiency to SGD (difference <0.1%).
+1. **Memory Efficiency**
+   - O(n) storage for second moments rather than O(n²) like Adam
+   - Especially beneficial for large language models with massive embedding matrices
 
-Each optimizer attribute was chosen based on empirical evidence demonstrating its effectiveness for ASR and NLP models and datasets. On it's own it's an effective optimizer, making practical engineering tradeoffs that work well empirically for speech recognition models, but it's purpose will be to serve as the backbone for the Frequency-Adaptive Momentum (FAM) approach that I'm experimenting with. FAM aims to harness the natural frequency structure of speech data within the optimization process itself. It's a work in progress. 
+2. **Numerical Stability**
+   - Multiple safeguards against exploding/vanishing gradients
+   - Bounded beta values prevent extreme adaptation rates
+
+3. **Flexibility**
+   - Works in both minimization and maximization modes
+   - Configurable for different parameter shapes (vectors vs matrices)
+
+MaxFactor essentially represents a hybrid approach that combines the memory efficiency of Adafactor, the adaptivity of Adam, and the robustness of sign-based methods, with its own unique max-pooling innovation for matrix parameters. It's particularly well-suited for training large models where memory constraints are significant.
 
 ---
 
