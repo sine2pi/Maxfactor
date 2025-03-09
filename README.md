@@ -1,5 +1,12 @@
 # Characterizing MaxFactor Optimizer
 
+Parameter-specific learning rate scaling is crucial for transformer-based ASR models.
+
+Uniform optimization techniques often struggle with ASR - they're trying to apply the same rules to fundamentally different computational structures.
+
+Connects to emergence in complex systems. The heterogeneous parameter ecology emerges naturally during training, suggesting the model organizes itself into specialized subsystems just like living organisms develop specialized organs.
+
+
 MaxFactor can be characterized as a memory-efficient adaptive optimizer that combines several innovative techniques:
 
 1. **Factored Second Moments for Matrices**
