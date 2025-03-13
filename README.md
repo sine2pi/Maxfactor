@@ -36,32 +36,6 @@ MaxFactor can be characterized as a memory-efficient adaptive optimizer that com
 MaxFactor essentially represents a hybrid approach that combines the memory efficiency of Adafactor, the adaptivity of Adam, and the robustness of sign-based methods, with its own unique max-pooling innovation for matrix parameters. It's particularly well-suited for training large models where memory constraints are significant.
 
 ---
-
-**Coming Soon: Frequency-Adaptive Momentum (FAM)**
-
-An experimental approach specifically designed for speech recognition tasks, FAM adapts momentum based on the frequency characteristics of gradient updates.
-
-### Frequency-Adaptive Momentum (FAM)
-
-#### Core Concept
-
-- Speech signals possess an inherent frequency structure, with different parts of the model responding to various frequency bands. This frequency structure remains preserved, albeit transformed, when converted to log-mel spectrograms, with model parameters adapting to capture this structure.
-- The Chain of Frequency Information: Original Audio → Log-Mel Spectrogram → Encoder Parameters → Gradient Updates.
-- Empirical observations reveal that transformer-based speech models develop:
-  - Lower encoder layers with filters responsive to specific frequency bands in the mel spectrogram.
-  - Attention heads tracking particular acoustic patterns over time.
-  - A hierarchical representation from acoustic features to phonetic units to words.
-- FAM aims to integrate a momentum scheme that adapts based on the "frequency signature" of gradient updates.
-
-#### Why This Optimizer Makes Sense
-
-FAM acknowledges the frequency structure within the optimization process itself, recognizing that:
-- **Gradient Frequencies Matter:** The Fourier transform of gradient updates reveals patterns linked to the model's current learning phase.
-- **Different Parameters Process Different Bands:** Similar to how our ears have frequency-specific receptors, different parts of the model specialize in various acoustic frequencies.
-- **Temporal Structure in Learning:** Speech learning progresses through stages - from basic acoustics to phonetic patterns to linguistic structures.
-
-By applying distinct momentum factors to different frequency bands in parameter space, FAM provides the optimizer with domain-specific audio information that it otherwise wouldn't have.
-
 ---
 MaxFactor family tree:
 ```
