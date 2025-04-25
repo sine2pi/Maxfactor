@@ -1,7 +1,9 @@
+Make sure to start with the default values and then tweak if needed. Learning rates and values used with other optimizers like AdamW will likely NaN out. depending on your architecture.*
+
 **Parameter-specific learning rate scaling is crucial for transformer-based ASR models.
 Uniform optimization techniques often struggle with ASR - they're trying to apply the same rules to fundamentally different computational structures.**
 
-Make sure to start with the default values. 
+
 
 MaxFactor can be characterized as a memory-efficient adaptive optimizer that combines several innovative techniques:
 
