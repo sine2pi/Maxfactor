@@ -1,3 +1,4 @@
+
 import torch
 
 class MaxFactor(torch.optim.Optimizer):
@@ -12,27 +13,14 @@ class MaxFactor(torch.optim.Optimizer):
                         gamma=gamma, max=max, min_lr=min_lr)
         super().__init__(params=params, defaults=defaults)
 
-
     def get_lr(self):
-        """Return current learning rates for all parameter groups."""
         param_specific_lrs = []
-        
         for group in self.param_groups:
             group_lrs = []
-            min_lr = group.get("min_lr", 1e-7)
-            eps1, eps2 = group["eps"]
             for p in group["params"]:
-                if p.grad is None:
-                    continue
                 state = self.state[p]
-                if "step" not in state:
-                    continue
-                step_float = state["step"].item()
-                rho_t = max(min_lr, min(group["lr"], 1.0 / (step_float ** 0.5)))
-                
-                param_norm = (p.norm() / (p.numel() ** 0.5 + 1e-12)).item()
-                alpha = max(eps2, param_norm) * rho_t
-                group_lrs.append(alpha)
+                if "last_alpha" in state:
+                    group_lrs.append(state["last_alpha"])
             if group_lrs:
                 param_specific_lrs.append(sum(group_lrs) / len(group_lrs))
             else:
@@ -100,6 +88,8 @@ class MaxFactor(torch.optim.Optimizer):
                 rho_t = max(min_lr, min(group["lr"], 1.0 / (step_float ** 0.5)))
                 alpha = max(eps2, (param.norm() / (param.numel() ** 0.5 + 1e-12)).item()) * rho_t
 
+                state["last_alpha"] = alpha
+
                 if group["weight_decay"] > 0:
                     param.mul_(1 - group["lr"] * group["weight_decay"])
 
@@ -139,52 +129,3 @@ class MaxFactor(torch.optim.Optimizer):
                 
         return loss
     
-
-torch.optim
-torch.optim.MaxFactor = MaxFactor
-
-class LRMonitor:
-    """Learning rate monitor that doesn't modify learning rates but reports them."""
-    
-    def __init__(self, optimizer):
-        self.optimizer = optimizer
-        self.lr_history = []
-        self._last_lr = None
-    
-    def step(self):
-        """Collect current learning rates without modifying them."""
-        current_lrs = self.optimizer.get_lr()
-        self.lr_history.append(current_lrs)
-        self._last_lr = current_lrs
-        return self
-    
-    def get_last_lr(self):
-        """Return the last learning rates observed."""
-        if self._last_lr is None:
-            return [group['lr'] for group in self.optimizer.param_groups]
-        return self._last_lr
-    
-    def plot_lr_history(self, figsize=(10, 6)):
-        """Plot learning rate history if matplotlib is available."""
-        try:
-            import matplotlib.pyplot as plt
-            plt.figure(figsize=figsize)
-            
-            for i, group_lrs in enumerate(zip(*self.lr_history)):
-                plt.plot(group_lrs, label=f'Group {i}')
-            
-            plt.xlabel('Steps')
-            plt.ylabel('Learning Rate')
-            plt.title('MaxFactor Learning Rate History')
-            plt.legend()
-            plt.yscale('log')
-            plt.grid(True, which='both', linestyle='--', alpha=0.5)
-            plt.show()
-        except ImportError:
-            print("Matplotlib not available for plotting")
-            print("LR History:", self.lr_history)
-
-
-torch.optim.LRMonitor = LRMonitor
-
-
