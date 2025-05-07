@@ -76,136 +76,134 @@ MaxFactor
 
 
 ```python
-
-import torch
-
-class MaxFactorA(torch.optim.Optimizer):
-    __version__ = "1.0"
+class MaxFactor(torch.optim.Optimizer):
+    """
+    MaxFactor optimizer: A memory-efficient optimizer with max-based normalization
+    for training speech recognition models.
     
-    def __init__(self, params, lr=0.025, beta2_decay=-0.8, eps=(1e-10, 1e-4), d=1.0, 
-                 weight_decay=0.025, gamma=0.99, max=False, min_lr=1e-7):
+    Key features:
+    - Factorized second moments (memory efficient)
+    - Max-based normalization (better for attention & rotary params)
+    - Infinity norm clipping (prevents extreme updates)
+    - Per-parameter adaptive learning rates
+    
+    Args:
+        params: Model parameters or param groups
+        lr: Learning rate (default: 0.01)
+        beta2_decay: Power for step-size decay (default: -0.8)
+        eps: Small constants for numerical stability (default: (1e-10, 1e-4))
+        d: Update scale control factor (default: 1.0)
+        weight_decay: Weight decay factor (default: 0.01)
+        gamma: EMA decay rate for non-factorized tensors (default: 0.99)
+        max_norm: Whether to use max normalization (default: True)
+        min_lr: Minimum learning rate (default: 1e-7)
+    """
+    def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(1e-10, 1e-4), 
+                 d=1.0, weight_decay=0.01, gamma=0.99, max_norm=True, min_lr=1e-7, scalar_boost=2.0):
         
-        print(f"Using MaxFactor optimizer v{self.__version__}")
-        
-        defaults = dict(lr=lr, beta2_decay=beta2_decay, eps=eps, d=d, weight_decay=weight_decay, 
-                        gamma=gamma, max=max, min_lr=min_lr)
+        defaults = dict(
+            lr=lr, 
+            beta2_decay=beta2_decay, 
+            eps=eps, 
+            d=d, 
+            weight_decay=weight_decay, 
+            gamma=gamma, 
+            max_norm=max_norm, 
+            min_lr=min_lr,
+            scalar_boost=scalar_boost
+        )
         super().__init__(params=params, defaults=defaults)
+        print(f"MaxFactor optimizer initialized with lr={lr}, beta2_decay={beta2_decay}")
 
-    def get_lr(self):
-        param_specific_lrs = []
-        for group in self.param_groups:
-            group_lrs = []
-            for p in group["params"]:
-                state = self.state[p]
-                if "last_alpha" in state:
-                    group_lrs.append(state["last_alpha"])
-            if group_lrs:
-                param_specific_lrs.append(sum(group_lrs) / len(group_lrs))
-            else:
-                param_specific_lrs.append(group["lr"])
-        return param_specific_lrs
-    
-    def get_last_lr(self):
-        return self.get_lr()
+    def _get_lr(self):
+        """Return the current learning rates as a dictionary."""
+        return {i: group['lr'] for i, group in enumerate(self.param_groups)}
 
     @torch.no_grad()
     def step(self, closure=None):
+        """Performs a single optimization step."""
         loss = None
         if closure is not None:
             with torch.enable_grad():
                 loss = closure()
 
         for group in self.param_groups:
-            params_with_grad, grads, row_vars, col_vars, v, state_steps = [], [], [], [], [], []
             eps1, eps2 = group["eps"]
             min_lr = group.get("min_lr", 1e-7)
             
             for p in group["params"]:
                 if p.grad is None:
                     continue
-                    
-                grad = p.grad
-                if grad.dtype in {torch.float16, torch.bfloat16}:
-                    grad = grad.float()
-
+                
+                grad = p.grad.float()
                 state = self.state[p]
+                
                 if len(state) == 0:
-                    state["step"] = torch.tensor(0.0, dtype=torch.float32)
+                    state["step"] = torch.tensor(0.0, device=p.device)
+                    
                     if p.dim() > 1:
                         row_shape, col_shape = list(p.shape), list(p.shape)
                         row_shape[-1], col_shape[-2] = 1, 1
-                        state["row_var"] = p.new_zeros(row_shape)
-                        state["col_var"] = p.new_zeros(col_shape)
-                    state["v"] = torch.zeros_like(p, memory_format=torch.preserve_format)
-
-                row_vars.append(state.get("row_var", None))
-                col_vars.append(state.get("col_var", None))
-                v.append(state["v"])
-                state_steps.append(state["step"])
-                params_with_grad.append(p)
-                grads.append(grad)
-
-            for i, param in enumerate(params_with_grad):
-                grad = grads[i]
-                state = self.state[param]
-
-                if group["max"]:
-                    grad = -grad
+                        state["row_var"] = torch.zeros(row_shape, device=p.device)
+                        state["col_var"] = torch.zeros(col_shape, device=p.device)
                     
-                step_t = state_steps[i]
-                row_var, col_var, vi = row_vars[i], col_vars[i], v[i]
-
-                if eps1 is None:
-                    eps1 = torch.finfo(param.dtype).eps
+                    state["v"] = torch.zeros_like(p)
                 
-                step_t += 1
-                step_float = step_t.item()
+                state["step"] += 1
+                step_float = state["step"].item()
                 
                 one_minus_beta2_t = min(0.999, max(0.001, step_float ** group["beta2_decay"]))
-                
                 rho_t = max(min_lr, min(group["lr"], 1.0 / (step_float ** 0.5)))
-                alpha = max(eps2, (param.norm() / (param.numel() ** 0.5 + 1e-12)).item()) * rho_t
-
-                state["last_alpha"] = alpha
-
+                param_scale = (p.norm() / (p.numel() ** 0.5 + 1e-12)).item()
+                alpha = max(eps2, param_scale) * rho_t
+                
                 if group["weight_decay"] > 0:
-                    param.mul_(1 - group["lr"] * group["weight_decay"])
-
-                if grad.dim() > 1:
+                    p.mul_(1 - group["lr"] * group["weight_decay"])
+                
+                if p.dim() > 1:
+                    row_var = state["row_var"]
+                    col_var = state["col_var"]
+                    
                     row_mean = torch.norm(grad, dim=-1, keepdim=True).square_()
                     row_mean.div_(grad.size(-1) + eps1)
-                    
                     row_var.lerp_(row_mean, one_minus_beta2_t)
                     
                     col_mean = torch.norm(grad, dim=-2, keepdim=True).square_()
                     col_mean.div_(grad.size(-2) + eps1)
-                    
                     col_var.lerp_(col_mean, one_minus_beta2_t)
                     
                     var_estimate = row_var @ col_var
-                    max_row_var = row_var.max(dim=-2, keepdim=True)[0]  
-                    var_estimate.div_(max_row_var.clamp_(min=eps1))
+                    
+                    if group["max_norm"]:
+                        max_row_var = row_var.max(dim=-2, keepdim=True)[0]
+                        var_estimate.div_(max_row_var.clamp_(min=eps1))
+                
                 else:
+                    vi = state["v"]
                     vi.mul_(group["gamma"]).add_(grad.square_(), alpha=1 - group["gamma"])
                     var_estimate = vi
 
-                update = var_estimate.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
-                
-                inf_norm = torch.norm(update, float('inf'))
-                if inf_norm > 0:
-                    update.div_(inf_norm.clamp_(min=eps1))
-                
-                denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
-                
-                if param.dim() > 1:
-                    max_vals = update.abs().max(dim=-1, keepdim=True)[0]
-                    param.add_(-alpha / denom * update.sign() * max_vals)
+
+                if p.numel() == 1:
+                    update = grad / (var_estimate.sqrt() + eps1)
+                    scalar_boost = group.get("scalar_boost", 2.0)
+                    p.add_(-alpha * scalar_boost * update)
                 else:
-                    param.add_(-alpha / denom * update)
-                
-                state["step"] = step_t
-                
-        return loss
+                    update = var_estimate.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
+                    
+                    inf_norm = torch.norm(update, float('inf'))
+                    if inf_norm > 0:
+                        update.div_(inf_norm.clamp_(min=eps1))
+                    
+                    denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
+                    
+                    if p.dim() > 1 and group["max_norm"]:
+                        max_vals = update.abs().max(dim=-1, keepdim=True)[0]
+                        p.add_(-alpha / denom * update.sign() * max_vals)
+                    else:
+                        p.add_(-alpha / denom * update)
+                    
+            return loss
     
 
 
