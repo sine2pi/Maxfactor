@@ -1,4 +1,4 @@
-A pretty neat optimizer.
+An optimizer.
 
 
 
