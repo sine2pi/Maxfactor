@@ -1,3 +1,4 @@
+import torch
 
 
 class MaxFactor(torch.optim.Optimizer):
