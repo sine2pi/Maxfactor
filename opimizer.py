@@ -4,7 +4,7 @@ import torch
 class MaxFactor(torch.optim.Optimizer):
     __version__ = "1.0"
     
-    def __init__(self, params, lr=0.025, beta2_decay=-0.8, eps=(1e-10, 1e-4), d=1.0, 
+    def __init__(self, params, lr=0.025, beta2_decay=0.8, eps=(1e-10, 1e-4), d=1.0, 
                  weight_decay=0.025, gamma=0.99, max=False, min_lr=1e-7):
         
         print(f"Using MaxFactor optimizer v{self.__version__}")
