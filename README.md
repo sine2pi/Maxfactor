@@ -22,6 +22,6 @@
 - **Automatic learning rate annealing** that decreases with square root of step count
 - **Parameter-specific updates** scaled by parameter norms
 
-This optimizer combines elements from several optimization techniques with specialized matrix handling that could be beneficial for asr neural network architectures.
+This optimizer combines elements from several optimization techniques with specialized matrix handling that could be beneficial for asr/nlp neural network architectures.
 
 
