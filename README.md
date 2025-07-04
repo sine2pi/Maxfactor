@@ -37,3 +37,5 @@ MaxFActor @ 1/2 vram usage
   scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=1e-7, last_epoch=-1)
 
 ```
+
+https://huggingface.co/Sin2pi/Echo17/tensorboard?params=scalars
