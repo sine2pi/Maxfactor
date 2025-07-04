@@ -25,9 +25,11 @@
 This optimizer combines elements from several optimization techniques with specialized matrix handling that could be beneficial for asr/nlp neural network architectures.
 
 AdamW
+
 <img width="640" alt="adamw" src="https://github.com/user-attachments/assets/068e4b2a-b0f3-47f1-8c28-21d2b6b968d3" />
 
-MaxFActor 1/2 mem usage
+MaxFActor @ 1/2 vram usage
+
 <img width="640" alt="totd" src="https://github.com/user-attachments/assets/f2bb09ea-566c-430e-bd09-0797af37a855" />
 
 
