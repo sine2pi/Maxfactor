@@ -24,6 +24,8 @@ MaxFActor @ 1/2 vram usage
 <img width="640" alt="totd" src="https://github.com/user-attachments/assets/f2bb09ea-566c-430e-bd09-0797af37a855" />
 
 
+
+
 ```python
 
   optimizer = MaxFactor(model.parameters(), lr=0.025, beta2_decay=-0.8, eps=(1e-10, 1e-7), d=1.0, 
