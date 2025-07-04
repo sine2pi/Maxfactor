@@ -32,7 +32,7 @@ MaxFActor @ 1/2 vram usage
                weight_decay=0.025, gamma=0.99, max=False)
 
   optimizer = torch.optim.AdamW(model.parameters(), lr=2.5e-4, eps=1e-8, weight_decay=0.01, betas=(0.9, 0.999), 
-  amsgrad=False, foreach=False, fused=False, capturable=False, differentiable=False, maximize=False)
+  amsgrad=False, foreach=False, fused=False)
   
   scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=1e-7, last_epoch=-1)
 
