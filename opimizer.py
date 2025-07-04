@@ -1,8 +1,8 @@
 import torch
 
 class MaxFactor(torch.optim.Optimizer):
-    def __init__(self, params, lr=0.01, beta2_decay=-0.8, eps=(1e-10, 1e-3), d=1.0, 
-                 weight_decay=0.01, gamma=0.99, max=False):
+    def __init__(self, params, lr=0.025, beta2_decay=-0.8, eps=(1e-10, 1e-7), d=1.0, 
+                 weight_decay=0.025, gamma=0.99, max=False):
         
         defaults = dict(lr=lr, beta2_decay=beta2_decay, eps=eps, d=d, weight_decay=weight_decay, 
                         gamma=gamma, max=max)
