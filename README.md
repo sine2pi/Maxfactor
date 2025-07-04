@@ -1,8 +1,8 @@
 # MaxFactor Optimizer Summary
 
-`MaxFactor` is a custom PyTorch optimizer with adaptive learning rates and specialized handling for matrix parameters.
+`MaxFactor` is a custom PyTorch optimizer with adaptive learning rates and specialized handling for matrix parameters. I wrote it for the model in the asr_model repository. 
 
-## Key Characteristics
+Characteristics
 - Adaptive learning rates based on parameter norms and training step
 - Specialized matrix handling:
   - Separate row and column variance estimates for 2D parameters
