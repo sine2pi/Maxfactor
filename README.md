@@ -13,28 +13,3 @@ Characteristics
 - Parameter specific updates scaled by parameter norms
 
 This optimizer combines elements from several optimization techniques with specialized matrix handling that could be beneficial for asr/nlp neural network architectures.
-
-AdamW
-
-<img width="640" alt="adamw" src="https://github.com/user-attachments/assets/068e4b2a-b0f3-47f1-8c28-21d2b6b968d3" />
-
-MaxFActor @ 1/2 vram usage
-
-<img width="640" alt="totd" src="https://github.com/user-attachments/assets/f2bb09ea-566c-430e-bd09-0797af37a855" />
-
-
-
-
-```python
-
-  optimizer = MaxFactor(model.parameters(), lr=0.025, beta2_decay=-0.8, eps=(1e-10, 1e-7), d=1.0, 
-               weight_decay=0.025, gamma=0.99, max=False)
-
-  optimizer = torch.optim.AdamW(model.parameters(), lr=2.5e-4, eps=1e-8, weight_decay=0.01, betas=(0.9, 0.999), 
-  amsgrad=False, foreach=False, fused=False)
-  
-  scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=1000, eta_min=1e-7, last_epoch=-1)
-
-```
-
-https://huggingface.co/Sin2pi/Echo17/tensorboard?params=scalars
