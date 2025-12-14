@@ -102,10 +102,14 @@ class MaxFactor(torch.optim.Optimizer):
                     var_est = vi
 
                 update = var_est.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
-                update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
-
+                # update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
+                
+                inf_norm = torch.norm(update, float('inf'))
+                if inf_norm > 0:
+                    update.div_(inf_norm.clamp_(min=eps1))
 
                 denom = max(1.0, update.norm(2).item() / ((update.numel() ** 0.5) * group["d"]))
+                
                 if group["bias"] == 1: 
                     param.add_(-alpha / denom * update.sign() * update.abs().max(dim=-1, keepdim=True)[0])
                 elif group["bias"] == 2: 
