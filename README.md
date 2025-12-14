@@ -3,13 +3,12 @@
 This optimizer combines elements from several optimization techniques with specialized matrix handling that could be beneficial for asr/nlp neural network architectures.
 
 ```python
-
 import torch
 
 class MaxFactor(torch.optim.Optimizer):
     __version__ = "1.0"
 
-    def __init__(self, params, lr=0.01, beta_decay=-0.8, eps=(1e-10, 1e-3), d=1.0, w_decay=0.01, gamma=0.99, max=False, bias=1):
+    def __init__(self, params, lr=0.025, beta_decay=-0.8, eps=(1e-8, 1e-8), d=1.0, w_decay=0.025, gamma=0.99, max=False, bias=1):
 
         if lr <= 0.0:
             raise ValueError("lr must be positive")
@@ -30,7 +29,7 @@ class MaxFactor(torch.optim.Optimizer):
 
         defaults = dict(lr=lr, beta_decay=beta_decay, eps=eps, d=d, w_decay=w_decay, 
                         gamma=gamma, max=max, bias=bias)
-                        
+
         super().__init__(params=params, defaults=defaults)
 
     @staticmethod
@@ -84,12 +83,13 @@ class MaxFactor(torch.optim.Optimizer):
                 step_t += 1
                 step_float = step_t.item()
                 
-                beta_t = min(0.999, max(0.001, step_float ** group["beta_decay"]))
-                # beta_t = step_float ** group["beta_decay"]
+                # beta_t = min(0.999, max(0.001, step_float ** group["beta_decay"]))
+                beta_t = step_float ** group["beta_decay"]
 
                 state["RMS"] = self._rms(param).item()
                 
                 rho_t = min(group["lr"], 1 / (step_float ** 0.5))
+                # rho_t = max(min_lr, min(group["lr"], 1.0 / (step_float ** 0.5)))
                 alpha = max(eps2, param.norm(2).item() / (param.numel() ** 0.5)) * rho_t
 
                 if group["w_decay"] != 0:
@@ -109,6 +109,12 @@ class MaxFactor(torch.optim.Optimizer):
 
                 update = var_est.clamp_(min=eps1 * eps1).rsqrt_().mul_(grad)
                 update = update.div_(torch.norm(update, float('inf')).clamp_(min=eps1))
+
+                inf_norm = torch.norm(update, float('inf'))
+                if inf_norm > 0:
+                    update.div_(inf_norm.clamp_(min=eps1))
+
+                # param.add_(update, alpha=-group["lr"])
 
 # For a 1D parameter (like a bias vector), update.abs().max(dim=-1, keepdim=True)[0] finds the single largest absolute 
 # value in the entire update vector and broadcasts it. This means **every element of the 1D parameter is updated by the same 
@@ -135,5 +141,4 @@ class MaxFactor(torch.optim.Optimizer):
                         param.add_(-alpha / denom * update.sign())
              
         return loss               
-
 ```
