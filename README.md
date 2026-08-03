@@ -1,1 +1,1 @@
-I can't even figure out what version I'm actually on now so I'm just goind to upload all the things.
+I'm just going to upload all the things. Most are dupes or more often they are almost dupes with one or two very very subtle changes. like order of operations etc.
