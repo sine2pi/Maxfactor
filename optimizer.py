@@ -1,6 +1,19 @@
 import math, json, os, torch, numpy as np
 from datetime import datetime
 
+
+# For a 1D parameter (like a bias vector aka scalars), update.abs().max(dim=-1, keepdim=True)[0] finds the single largest absolute 
+# value in the update vector and broadcasts it so every element of the 1D parameter is updated by the same 
+# magnitude, determined by the most extreme value. Acts as a strong form of regularization, forcing all biases in a layer to move in unison.
+# for the 2D weight matrix, update.abs().max(dim=-1, keepdim=True)[0] finds the maximum absolute value per row.
+# The direction of the update for each individual bias term (+ or -) is still determined by its own gradient, via update.sign(). This creates a small bias for outliers.
+# The "outliers" that the max update amplifies are not statistical noise when we consider pitch. (good for pitch bad for spectrograms)
+# The median update filters these signals (good for spectrograms bad for pitch).
+# The max update uses the single largest gradient signal and forces the group (all biases in a layer) to react strongly. It treats these spikes as the most important thing to learn from in that step.
+# The median update from the pitch event is treated as an outlier and ignored. 
+
+
+
 # need to test somethings
 class MaxFactor(torch.optim.Optimizer):
     __version__ = "1.0"
@@ -54,7 +67,7 @@ class MaxFactor(torch.optim.Optimizer):
             for i, param in enumerate(p_grad):
                 
                 grad = grads[i]
-                # state = self.state[param]
+                state = self.state[param]
 
                 if group["max"]:
                     grad = -grad
@@ -124,6 +137,16 @@ class MaxFactor(torch.optim.Optimizer):
                 param.add_(final_direction, alpha=-step_size)
 
         return loss
+
+    # optimizer = MaxFactor([
+    #     {'params': main_params, 'bias': 1.0}, 
+    #     {'params': jump_params, 'bias': 2.0}  
+    # ], lr=2.5e-3, b_decay=-0.8, eps=(1e-8, 1e-8), d=1.0, decay=1e-2, gamma=0.99, max=False, bias=1, 
+    #              min_lr=1e-9, clip=False, cap=0.0)
+
+    # scheduler = FAMScheduler2(optimizer, warmup_steps=10, total_steps=100, 
+    #              decay_start=None, warmup_start=1e-6, eta_min=1e-6, last_epoch=-1) 
+
 
 class MaxFactor99(torch.optim.Optimizer):
     __version__ = "0.99"
